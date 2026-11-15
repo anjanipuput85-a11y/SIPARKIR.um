@@ -1,0 +1,3170 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SIPARKIR — Sistem Pemantau Lahan Parkir Motor Real-Time | Universitas Negeri Malang</title>
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            um: {
+              navy: '#0c2340',
+              blue: '#0066e6',
+              blueHover: '#0052bd',
+              softBlue: '#eef4ff',
+              emerald: '#059669',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Input lembut khas halaman login UM */
+    .um-login-input {
+      background-color: #eef4ff;
+      border: 1.5px solid transparent;
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: 14.5px;
+      color: #0f172a;
+      width: 100%;
+      transition: all 0.18s ease;
+    }
+    .um-login-input:focus {
+      outline: none;
+      background-color: #f5f8ff;
+      border-color: #0066e6;
+      box-shadow: 0 0 0 3px rgba(0, 102, 230, 0.15);
+    }
+
+    /* Denyut indikator LIVE real-time */
+    @keyframes livePing {
+      0% { transform: scale(0.85); opacity: 0.9; }
+      75% { transform: scale(2.2); opacity: 0; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    .live-dot-ring::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 9999px;
+      background-color: #10b981;
+      animation: livePing 1.9s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+    }
+
+    /* Animasi rute sepeda motor dan jalur jalan kaki di peta SVG */
+    @keyframes motorDash {
+      to { stroke-dashoffset: -36; }
+    }
+    .motor-route-anim {
+      animation: motorDash 1.05s linear infinite;
+    }
+
+    @keyframes walkDash {
+      to { stroke-dashoffset: -18; }
+    }
+    .walk-route-anim {
+      animation: walkDash 1.2s linear infinite;
+    }
+
+    /* Transisi halus Slide-over Drawer Garis Tiga */
+    .drawer-backdrop {
+      transition: opacity 0.25s ease;
+    }
+    .drawer-panel {
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Efek garis pindai halus pada layar CCTV */
+    .cctv-scanlines {
+      background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0) 50%,
+        rgba(0, 0, 0, 0.16) 50%,
+        rgba(0, 0, 0, 0.16) 100%
+      );
+      background-size: 100% 4px;
+    }
+
+    /* Scrollbar rapi */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900">
+
+  <!-- =========================================================================
+       HALAMAN 0: LAYAR AWAL LOGIN SIPARKIR (TAMPILAN BERSIH BERLATAR PUTIH UM)
+       ========================================================================= -->
+  <section id="loginView" class="min-h-screen w-full bg-white flex flex-col justify-between px-4 py-7 sm:py-10">
+    
+    <div class="w-full max-w-[430px] mx-auto my-auto">
+      
+      <!-- 1. Pemilih Bahasa Indonesia / English -->
+      <div class="mb-5">
+        <button
+          id="langToggleBtn"
+          type="button"
+          onclick="toggleLoginLanguage()"
+          class="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-[#0066e6] py-1.5 px-2.5 rounded-lg hover:bg-slate-50 transition"
+          aria-label="Pilih Bahasa"
+        >
+          <span id="langFlagBox" class="inline-flex items-center justify-center w-5 h-3.5 rounded-[2px] overflow-hidden border border-slate-300 shrink-0">
+            <svg viewBox="0 0 24 16" class="w-full h-full">
+              <rect width="24" height="8" y="0" fill="#ce1126" />
+              <rect width="24" height="8" y="8" fill="#ffffff" />
+            </svg>
+          </span>
+          <span id="langLabelText">Indonesia</span>
+          <svg class="w-3.5 h-3.5 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- 2. Header Logo Resmi UM + Logo 72 Tahun + Kampus Merdeka -->
+      <div class="flex items-center flex-wrap gap-3 mb-7 select-none">
+        <!-- Emblem UM -->
+        <div class="flex items-center gap-2.5">
+          <svg class="w-11 h-11 shrink-0" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="30" fill="#0c2340" stroke="#eab308" stroke-width="2.5" />
+            <circle cx="32" cy="32" r="24" fill="#ffffff" />
+            <circle cx="32" cy="32" r="21" fill="#0066e6" />
+            <path d="M22 36C22 31 27 29 32 32C37 29 42 31 42 36L32 42L22 36Z" fill="#facc15" />
+            <path d="M32 16L35 24L32 28L29 24L32 16Z" fill="#ef4444" />
+            <circle cx="32" cy="27" r="3.5" fill="#fde047" />
+            <path d="M18 40C23 45 41 45 46 40" stroke="#fde047" stroke-width="2.2" stroke-linecap="round" />
+          </svg>
+
+          <div class="flex flex-col leading-none">
+            <svg class="h-8 w-auto" viewBox="0 0 92 42" fill="none">
+              <defs>
+                <linearGradient id="umBrandGrad" x1="0" y1="0" x2="92" y2="42" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#0066e6" />
+                  <stop offset="52%" stop-color="#10b981" />
+                  <stop offset="100%" stop-color="#eab308" />
+                </linearGradient>
+              </defs>
+              <path d="M6 10V25C6 31.5 10.5 35.5 17 35.5C23.5 35.5 28 31.5 28 25V10H22.5V24.5C22.5 28.2 20.3 30.5 17 30.5C13.7 30.5 11.5 28.2 11.5 24.5V10H6Z" fill="url(#umBrandGrad)" />
+              <path d="M34 35V19C34 13.5 38 10 43.5 10C47.5 10 50.6 11.8 52.2 14.8C54 11.8 57.2 10 61.2 10C66.8 10 70.8 13.6 70.8 19.2V35H65.3V19.8C65.3 16.5 63.3 14.6 60.2 14.6C57.1 14.6 55 16.6 55 19.8V35H49.6V19.8C49.6 16.5 47.6 14.6 44.5 14.6C41.4 14.6 39.4 16.6 39.4 19.8V35H34Z" fill="url(#umBrandGrad)" />
+            </svg>
+            <span class="text-[8.5px] font-bold tracking-tight text-slate-700 -mt-0.5">
+              Excellence in Learning Innovation
+            </span>
+          </div>
+        </div>
+
+        <div class="h-9 w-[1px] bg-slate-200"></div>
+
+        <!-- Logo 72 Tahun UM -->
+        <svg class="h-10 w-auto" viewBox="0 0 68 48" fill="none">
+          <defs>
+            <linearGradient id="um72Grad" x1="0" y1="0" x2="68" y2="48" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0c2340" />
+              <stop offset="55%" stop-color="#0066e6" />
+              <stop offset="100%" stop-color="#10b981" />
+            </linearGradient>
+          </defs>
+          <path d="M6 10H30L16 42H9.5L22 15.5H6V10Z" fill="url(#um72Grad)" />
+          <path d="M35 17C35 12 39.2 9 45.2 9C51.2 9 55.2 12.2 55.2 17.2C55.2 21.4 52.5 24.4 46.5 29.2L41.8 33H55.8V38.5H34.2V33.6L43.2 26.2C47.5 22.6 49.4 20.4 49.4 17.5C49.4 15.2 47.7 13.8 45.1 13.8C42.4 13.8 40.6 15.3 40.5 17.8H35V17Z" fill="url(#um72Grad)" />
+        </svg>
+
+        <!-- Badge Kampus Merdeka -->
+        <div class="flex flex-col leading-none">
+          <span class="text-[12px] font-extrabold text-[#0c2340] tracking-tight">Kampus</span>
+          <span class="text-[13px] font-extrabold text-[#0066e6] tracking-tight -mt-0.5">Merdeka</span>
+          <span class="mt-0.5 px-1.5 py-[2px] bg-[#facc15] text-[#0c2340] text-[6.5px] font-extrabold tracking-wider rounded-[3px] text-center">
+            INDONESIA JAYA
+          </span>
+        </div>
+      </div>
+
+      <!-- 3. Judul Besar & Subjudul SIPARKIR -->
+      <div class="mb-6">
+        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold mb-2.5">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          Layanan Parkir Sepeda Motor Kampus I UM
+        </div>
+        <h1 class="text-[28px] sm:text-[31px] leading-tight tracking-tight text-slate-900">
+          <span id="loginPrefixText" class="font-medium">Masuk Ke</span>
+          <span class="font-extrabold text-[#0c2340]">SIPARKIR</span>
+        </h1>
+        <p id="loginSubText" class="text-[14.5px] text-slate-500 mt-1.5">
+          Satu Akun untuk Semua Kemudahan Parkir Anda
+        </p>
+      </div>
+
+      <!-- 4. Form Input Kartu Minimalis Bertumpuk -->
+      <form id="siparkirLoginForm" onsubmit="handleSiparkirLogin(event)" novalidate>
+        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+          
+          <!-- Nama Akun (NIM) -->
+          <div class="border-b border-slate-200 px-4 py-3.5">
+            <label id="lblAccountName" for="nimInput" class="block text-xs font-semibold text-slate-500 mb-1.5">
+              Nama Akun (NIM):
+            </label>
+            <input
+              id="nimInput"
+              type="text"
+              value="250612602418"
+              autocomplete="username"
+              placeholder="Contoh: 250612602418"
+              required
+              class="um-login-input font-semibold"
+            />
+          </div>
+
+          <!-- Sandi -->
+          <div class="px-4 py-3.5">
+            <label id="lblPassword" for="passwordInput" class="block text-xs font-semibold text-slate-500 mb-1.5">
+              Sandi:
+            </label>
+            <input
+              id="passwordInput"
+              type="password"
+              value="siparkir2026"
+              autocomplete="current-password"
+              placeholder="Masukkan kata sandi akun UM"
+              required
+              class="um-login-input font-semibold"
+            />
+          </div>
+
+        </div>
+
+        <!-- Pesan Validasi -->
+        <p id="loginErrorMsg" class="hidden text-xs font-semibold text-rose-600 mt-2.5">
+          Mohon isi Nama Akun (NIM) dan Sandi Anda terlebih dahulu.
+        </p>
+
+        <!-- Baris Checkbox Tampilkan Kata Sandi & Lupa Kata Sandi -->
+        <div class="flex items-center justify-between mt-4 mb-5">
+          <label class="inline-flex items-center gap-2.5 cursor-pointer select-none group">
+            <input
+              id="showPassCheck"
+              type="checkbox"
+              onchange="togglePasswordVisibility(this.checked)"
+              class="w-4 h-4 rounded border-slate-300 text-[#0066e6] focus:ring-[#0066e6]/30 cursor-pointer accent-[#0066e6]"
+            />
+            <span id="lblShowPass" class="text-[13.5px] font-medium text-slate-600 group-hover:text-slate-900 transition">
+              Tampilkan Kata Sandi
+            </span>
+          </label>
+
+          <button
+            id="forgotPassBtn"
+            type="button"
+            onclick="openForgotModal()"
+            class="text-[13.5px] font-medium italic underline text-slate-500 hover:text-[#0066e6] transition"
+          >
+            Lupa Kata Sandi
+          </button>
+        </div>
+
+        <!-- Tombol Biru Penuh (#0066e6) 'Masuk' -->
+        <button
+          type="submit"
+          class="w-full h-[48px] bg-[#0066e6] hover:bg-[#0052bd] active:scale-[0.99] text-white font-bold text-[15px] rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <span id="btnMasukText">Masuk</span>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+        </button>
+      </form>
+
+      <!-- 5. Masuk Instan dengan Akun Demo Mahasiswa -->
+      <div class="mt-7 pt-5 border-t border-slate-100">
+        <div class="flex items-center justify-between mb-2.5">
+          <span class="text-xs font-bold text-slate-700">Masuk Instan dengan Akun Demo Mahasiswa</span>
+          <span class="text-[11px] font-semibold text-[#0066e6]">Klik 1x langsung masuk</span>
+        </div>
+
+        <div class="grid grid-cols-1 gap-2">
+          <button type="button" onclick="instantDemoLogin('250612602418')" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-left transition group">
+            <div>
+              <div class="text-xs font-bold text-slate-800 group-hover:text-[#0066e6]">Syamsul</div>
+              <div class="text-[11px] font-mono text-slate-500">NIM: 250612602418</div>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-white group-hover:bg-[#0066e6] text-slate-700 group-hover:text-white border border-slate-200 group-hover:border-[#0066e6] text-[11px] font-bold transition">
+              Masuk &rarr;
+            </span>
+          </button>
+
+          <button type="button" onclick="instantDemoLogin('250612603001')" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-left transition group">
+            <div>
+              <div class="text-xs font-bold text-slate-800 group-hover:text-[#0066e6]">Kiki Rizki Rahmatiah</div>
+              <div class="text-[11px] font-mono text-slate-500">NIM: 250612603001</div>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-white group-hover:bg-[#0066e6] text-slate-700 group-hover:text-white border border-slate-200 group-hover:border-[#0066e6] text-[11px] font-bold transition">
+              Masuk &rarr;
+            </span>
+          </button>
+
+          <button type="button" onclick="instantDemoLogin('250421601178')" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-left transition group">
+            <div>
+              <div class="text-xs font-bold text-slate-800 group-hover:text-[#0066e6]">Siti Manistia Nengse</div>
+              <div class="text-[11px] font-mono text-slate-500">NIM: 250421601178</div>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-white group-hover:bg-[#0066e6] text-slate-700 group-hover:text-white border border-slate-200 group-hover:border-[#0066e6] text-[11px] font-bold transition">
+              Masuk &rarr;
+            </span>
+          </button>
+
+          <button type="button" onclick="instantDemoLogin('250612619453')" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-left transition group">
+            <div>
+              <div class="text-xs font-bold text-slate-800 group-hover:text-[#0066e6]">Putri Nur Anjani</div>
+              <div class="text-[11px] font-mono text-slate-500">NIM: 250612619453</div>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-white group-hover:bg-[#0066e6] text-slate-700 group-hover:text-white border border-slate-200 group-hover:border-[#0066e6] text-[11px] font-bold transition">
+              Masuk &rarr;
+            </span>
+          </button>
+
+          <button type="button" onclick="instantDemoLogin('250612621779')" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-left transition group">
+            <div>
+              <div class="text-xs font-bold text-slate-800 group-hover:text-[#0066e6]">Teguh Apitahadi</div>
+              <div class="text-[11px] font-mono text-slate-500">NIM: 250612621779</div>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-white group-hover:bg-[#0066e6] text-slate-700 group-hover:text-white border border-slate-200 group-hover:border-[#0066e6] text-[11px] font-bold transition">
+              Masuk &rarr;
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 6. Footer Resmi UM -->
+      <footer class="mt-7 text-center text-[11.5px] text-slate-500 space-y-1.5">
+        <div class="font-medium text-slate-600">
+          Sistem Pemantau Lahan Parkir Motor Real-Time • Kampus I Jl. Semarang 5 Malang
+        </div>
+        <div>
+          <a href="#bantuan" onclick="event.preventDefault(); openForgotModal()" class="underline hover:text-[#0066e6]">Pusat Bantuan Akun</a>
+          <span class="mx-1.5">·</span>
+          <a href="#aturan" onclick="event.preventDefault(); showToast('Gunakan KTM / STNK aktif saat memasuki gerbang parkir motor UM.', 'blue')" class="underline hover:text-[#0066e6]">Tata Tertib Parkir UM</a>
+          <span class="mx-1.5">·</span>
+          <span>© 2026 Universitas Negeri Malang</span>
+        </div>
+      </footer>
+
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       APLIKASI UTAMA SIPARKIR (SETELAH LOGIN BERHASIL)
+       ========================================================================= -->
+  <div id="appShell" class="hidden min-h-screen flex-col bg-[#f4f7fb]">
+
+    <!-- HEADER ATAS BERSIH & RAMAH PENGGUNA -->
+    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs">
+      <div class="max-w-[1380px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        
+        <!-- Kiri: Tombol Garis Tiga (☰ Hamburger Menu) + Logo SIPARKIR UM -->
+        <div class="flex items-center gap-3">
+          <button
+            id="hamburgerBtn"
+            type="button"
+            onclick="openDrawer()"
+            class="p-2.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-800 hover:text-[#0066e6] border border-slate-200/80 transition active:scale-95"
+            aria-label="Buka Menu Navigasi"
+            title="Menu Navigasi & Informasi Pendukung"
+          >
+            <!-- Ikon Garis Tiga (Hamburger) -->
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
+          <button type="button" onclick="switchView('beranda')" class="flex items-center gap-2.5 text-left group">
+            <div class="w-9 h-9 rounded-xl bg-[#0c2340] text-white flex items-center justify-center font-extrabold text-sm shadow-xs group-hover:bg-[#0066e6] transition">
+              <svg class="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="5.5" cy="17.5" r="3" />
+                <circle cx="18.5" cy="17.5" r="3" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 6h3l2 5.5M5.5 17.5L9 11h5l2.5 6.5M9 11L7.5 7.5H5" />
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-base sm:text-lg font-extrabold tracking-tight text-[#0c2340]">SIPARKIR UM</span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span class="relative flex h-2 w-2 live-dot-ring">
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  LIVE • Parkir Motor
+                </span>
+              </div>
+              <p class="text-[11px] text-slate-500 hidden sm:block">Kampus I Universitas Negeri Malang</p>
+            </div>
+          </button>
+        </div>
+
+        <!-- Kanan: Simulasi Live + Profil Ringkas Pengguna + Keluar -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <button
+            id="simToggleBtn"
+            type="button"
+            onclick="toggleLiveSimulation()"
+            class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition"
+          >
+            <span id="simStatusDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="simStatusText">Simulasi Live: Aktif</span>
+          </button>
+
+          <div class="hidden md:flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div id="headerAvatar" class="w-7 h-7 rounded-full bg-[#0066e6] text-white font-bold text-xs flex items-center justify-center">
+              SY
+            </div>
+            <div class="leading-tight">
+              <div id="headerUserName" class="text-xs font-bold text-slate-800">Syamsul</div>
+              <div id="headerUserNim" class="text-[10.5px] font-mono text-slate-500">250612602418</div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onclick="handleLogout()"
+            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 text-xs font-bold transition"
+            title="Keluar dari SIPARKIR"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span class="hidden sm:inline">Keluar</span>
+          </button>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- =========================================================================
+         SLIDE-OVER SIDEBAR DRAWER (MENU GARIS TIGA ☰)
+         ========================================================================= -->
+    <div id="drawerOverlay" class="fixed inset-0 z-50 hidden">
+      <!-- Backdrop -->
+      <div
+        id="drawerBackdrop"
+        onclick="closeDrawer()"
+        class="drawer-backdrop fixed inset-0 bg-slate-950/50 backdrop-blur-xs opacity-0"
+      ></div>
+
+      <!-- Panel Drawer Kiri -->
+      <aside
+        id="drawerPanel"
+        class="drawer-panel relative w-[290px] sm:w-[320px] max-w-[85vw] h-full bg-white shadow-2xl border-r border-slate-200 flex flex-col justify-between -translate-x-full"
+        aria-label="Menu Navigasi Utama SIPARKIR"
+      >
+        <div>
+          <!-- Header Drawer -->
+          <div class="p-5 bg-[#0c2340] text-white flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center font-extrabold text-amber-400">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <circle cx="5.5" cy="17.5" r="3" />
+                  <circle cx="18.5" cy="17.5" r="3" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 6h3l2 5.5M5.5 17.5L9 11h5l2.5 6.5M9 11L7.5 7.5H5" />
+                </svg>
+              </div>
+              <div>
+                <div class="font-extrabold text-sm tracking-tight">Menu SIPARKIR UM</div>
+                <div class="text-[11px] text-blue-200">Navigasi Parkir Motor Kampus</div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onclick="closeDrawer()"
+              class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition"
+              aria-label="Tutup Menu"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Kartu Profil Mahasiswa di Drawer -->
+          <div class="mx-4 mt-4 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
+            <div id="drawerAvatar" class="w-10 h-10 rounded-full bg-[#0066e6] text-white font-extrabold text-sm flex items-center justify-center shrink-0">
+              SY
+            </div>
+            <div class="min-w-0">
+              <div id="drawerUserName" class="text-sm font-extrabold text-slate-900 truncate">Syamsul</div>
+              <div id="drawerUserNim" class="text-xs font-mono text-slate-500">NIM: 250612602418</div>
+            </div>
+          </div>
+
+          <!-- Daftar 5 Menu Utama -->
+          <nav class="p-4 space-y-1.5">
+            <button
+              type="button"
+              data-nav="beranda"
+              onclick="switchView('beranda')"
+              class="drawer-nav-item w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left text-sm font-bold bg-blue-50 text-[#0066e6] border border-blue-200/70 transition"
+            >
+              <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+              <div>
+                <div>Beranda Utama</div>
+                <div class="text-[11px] font-normal opacity-80">Peta &amp; Pencari Parkir Motor</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              data-nav="lokasi"
+              onclick="switchView('lokasi')"
+              class="drawer-nav-item w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left text-sm font-bold text-slate-700 hover:bg-slate-100 transition"
+            >
+              <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <div>
+                <div>Daftar Lokasi &amp; CCTV Live</div>
+                <div class="text-[11px] font-normal text-slate-500">15 Titik Parkir &amp; Kamera AI</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              data-nav="tren"
+              onclick="switchView('tren')"
+              class="drawer-nav-item w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left text-sm font-bold text-slate-700 hover:bg-slate-100 transition"
+            >
+              <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+              </svg>
+              <div>
+                <div>Jam Sibuk &amp; Tren Parkir</div>
+                <div class="text-[11px] font-normal text-slate-500">Grafik Kepadatan 06.30–17.00</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              data-nav="panduan"
+              onclick="switchView('panduan')"
+              class="drawer-nav-item w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left text-sm font-bold text-slate-700 hover:bg-slate-100 transition"
+            >
+              <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <div>
+                <div>Panduan &amp; Tata Tertib Parkir</div>
+                <div class="text-[11px] font-normal text-slate-500">Cara Pakai, Aturan &amp; Lapor Kendala</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              data-nav="tentang"
+              onclick="switchView('tentang')"
+              class="drawer-nav-item w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left text-sm font-bold text-slate-700 hover:bg-slate-100 transition"
+            >
+              <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <div>Tentang SIPARKIR</div>
+                <div class="text-[11px] font-normal text-slate-500">Tujuan, Keunggulan &amp; Sasaran Pengguna</div>
+              </div>
+            </button>
+          </nav>
+        </div>
+
+        <!-- Footer Drawer -->
+        <div class="p-4 border-t border-slate-100">
+          <button
+            type="button"
+            onclick="closeDrawer(); handleLogout();"
+            class="w-full py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white font-bold text-xs flex items-center justify-center gap-2 transition"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Keluar Akun
+          </button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- =========================================================================
+         KONTEN UTAMA (5 HALAMAN SPA BERBASIS MENU GARIS TIGA)
+         ========================================================================= -->
+    <main class="flex-1 max-w-[1380px] w-full mx-auto px-4 sm:px-6 py-6">
+
+      <!-- =======================================================================
+           VIEW 1: BERANDA UTAMA (PETA & PENCARI PARKIR MOTOR)
+           ======================================================================= -->
+      <div id="view-beranda" class="space-y-6">
+        
+        <!-- 1. Sapaan Hangat Personal & Langkah Singkat -->
+        <section class="bg-gradient-to-br from-[#0c2340] via-[#123563] to-[#0052bd] rounded-3xl p-5 sm:p-7 text-white shadow-md relative overflow-hidden">
+          <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div class="space-y-1.5 max-w-2xl">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-sky-200 text-xs font-semibold">
+                <span>Pencari Parkir Sepeda Motor Kampus I UM</span>
+              </div>
+              <h1 id="welcomeGreetingTitle" class="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight">
+                Halo, Syamsul! Mau parkir motor di area mana?
+              </h1>
+              <p class="text-xs sm:text-sm text-blue-100/90 leading-relaxed">
+                Pilih gerbang masuk dan gedung tujuan Anda di bawah ini. Sistem akan langsung mencarikan titik parkir motor terdekat yang masih tersedia lengkap dengan rute dan pantauan CCTV.
+              </p>
+            </div>
+
+            <!-- 3 Langkah Mini -->
+            <div class="grid grid-cols-3 gap-2 sm:gap-3 shrink-0">
+              <div class="bg-white/10 backdrop-blur-xs border border-white/15 rounded-2xl p-3 text-center">
+                <span class="w-6 h-6 rounded-full bg-amber-400 text-[#0c2340] font-extrabold text-xs inline-flex items-center justify-center mb-1">1</span>
+                <div class="text-[11px] font-bold">Pilih Gerbang</div>
+              </div>
+              <div class="bg-white/10 backdrop-blur-xs border border-white/15 rounded-2xl p-3 text-center">
+                <span class="w-6 h-6 rounded-full bg-amber-400 text-[#0c2340] font-extrabold text-xs inline-flex items-center justify-center mb-1">2</span>
+                <div class="text-[11px] font-bold">Pilih Gedung</div>
+              </div>
+              <div class="bg-white/10 backdrop-blur-xs border border-white/15 rounded-2xl p-3 text-center">
+                <span class="w-6 h-6 rounded-full bg-emerald-400 text-[#0c2340] font-extrabold text-xs inline-flex items-center justify-center mb-1">3</span>
+                <div class="text-[11px] font-bold">Ikuti Rute</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. Kartu Pencari Parkir Cepat (Smart Motor Parking Finder) + Kartu Rekomendasi Terbaik -->
+        <section class="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-5 sm:p-6 space-y-5">
+          <div class="flex flex-col lg:flex-row lg:items-end gap-4">
+            
+            <!-- Dropdown 1: Gerbang Masuk Kampus -->
+            <div class="flex-1">
+              <label for="finderGateSelect" class="block text-xs font-bold text-slate-700 mb-1.5">
+                1. Gerbang Masuk Kampus
+              </label>
+              <select
+                id="finderGateSelect"
+                class="w-full px-3.5 py-3 rounded-xl bg-slate-50 border border-slate-300 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066e6]/25 focus:border-[#0066e6]"
+              >
+                <option value="gt2-semarang">Gerbang Utama Jl. Semarang / GT2</option>
+                <option value="gt-veteran">Gerbang Utara Jl. Veteran</option>
+                <option value="gt-surabaya">Gerbang Selatan Jl. Surabaya</option>
+              </select>
+            </div>
+
+            <!-- Dropdown 2: Gedung / Area Tujuan -->
+            <div class="flex-1">
+              <label for="finderBuildingSelect" class="block text-xs font-bold text-slate-700 mb-1.5">
+                2. Gedung / Area Tujuan
+              </label>
+              <select
+                id="finderBuildingSelect"
+                class="w-full px-3.5 py-3 rounded-xl bg-slate-50 border border-slate-300 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066e6]/25 focus:border-[#0066e6]"
+              >
+                <option value="gkb-a20">GKB A19–A20 (Gedung Kuliah Bersama)</option>
+                <option value="rektorat-a">Graha Rektorat A</option>
+                <option value="fmipa-b">FMIPA / Teknik B11–B19</option>
+                <option value="cakrawala-c3">Graha Cakrawala C3</option>
+                <option value="masjid-c4">Masjid Al-Hikmah C4</option>
+                <option value="stadion-d21">Stadion Cakrawala D21</option>
+                <option value="sastra-d">Fakultas Sastra / FIS D3–D19</option>
+                <option value="kuliah-lf">Gedung Kuliah LF–LU–LB</option>
+              </select>
+            </div>
+
+            <!-- Tombol Aksi Utama -->
+            <div class="lg:w-auto">
+              <button
+                type="button"
+                onclick="findBestMotorParking(true)"
+                class="w-full lg:w-auto px-6 py-3.5 rounded-xl bg-[#0066e6] hover:bg-[#0052bd] active:scale-[0.99] text-white font-bold text-sm shadow-sm transition inline-flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Carikan Slot Motor Terdekat
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Kartu Rekomendasi Terbaik yang Menonjol -->
+          <div id="recommendationBanner" class="rounded-2xl bg-emerald-50/80 border-2 border-emerald-200 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all">
+            <div class="space-y-1.5">
+              <div class="flex flex-wrap items-center gap-2">
+                <span id="recBadgeTag" class="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-extrabold tracking-wide">
+                  REKOMENDASI TERBAIK
+                </span>
+                <span id="recSpotCode" class="px-2.5 py-0.5 rounded-md bg-[#0c2340] text-white font-mono text-xs font-extrabold">
+                  P-A20
+                </span>
+                <span id="recWalkTime" class="text-xs font-bold text-emerald-800">
+                  • Estimasi 1 menit jalan kaki ke GKB A19–A20
+                </span>
+              </div>
+
+              <h2 id="recSpotTitle" class="text-base sm:text-lg font-extrabold text-slate-900">
+                Parkir Motor GKB A19 &amp; A20
+              </h2>
+
+              <p id="recExplanationText" class="text-xs sm:text-sm text-slate-600">
+                Tersedia <strong class="text-emerald-700">36 slot motor kosong</strong> dari total 140 kapasitas. Area dilengkapi kanopi pelindung hujan dan kamera CCTV AI.
+              </p>
+            </div>
+
+            <div class="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onclick="scrollToCampusMap()"
+                class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs shadow-2xs transition inline-flex items-center justify-center gap-1.5"
+              >
+                <svg class="w-4 h-4 text-[#0066e6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                Lihat Rute di Peta
+              </button>
+
+              <button
+                id="recCctvBtn"
+                type="button"
+                onclick="openCctvModal(recommendedSpotId)"
+                class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-[#0c2340] hover:bg-[#0066e6] text-white font-bold text-xs shadow-xs transition inline-flex items-center justify-center gap-1.5"
+              >
+                <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Pantau CCTV
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. Tiga Kartu Ringkasan Status Parkir Motor -->
+        <section aria-label="Ringkasan Kapasitas Parkir Motor UM" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          <!-- Kartu 1: Total Slot Motor Kosong -->
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-slate-500">Total Slot Motor Kosong</div>
+              <div class="mt-1 flex items-baseline gap-2">
+                <span id="kpiEmptySlots" class="text-3xl font-extrabold font-mono text-[#0c2340]">452</span>
+                <span id="kpiTotalSlots" class="text-xs font-semibold text-slate-400">/ 1.375 slot</span>
+              </div>
+              <div class="mt-1.5 text-[11.5px] font-semibold text-emerald-700">
+                Siap ditempati di seluruh Kampus I UM
+              </div>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-blue-50 text-[#0066e6] flex items-center justify-center shrink-0">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="5.5" cy="17.5" r="3" />
+                <circle cx="18.5" cy="17.5" r="3" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 6h3l2 5.5M5.5 17.5L9 11h5l2.5 6.5M9 11L7.5 7.5H5" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Kartu 2: Area Tersedia (Hijau) vs Area Padat (Kuning) -->
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-slate-500">Area Tersedia vs Area Padat</div>
+              <div class="mt-1.5 flex items-center gap-3">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-extrabold text-sm border border-emerald-200">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  <span id="kpiAvailableZones">10</span> Tersedia
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 font-extrabold text-sm border border-amber-200">
+                  <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                  <span id="kpiCrowdedZones">2</span> Padat
+                </span>
+              </div>
+              <div class="mt-1.5 text-[11.5px] text-slate-500">
+                Status padat saat sisa slot &le; 15%
+              </div>
+            </div>
+          </div>
+
+          <!-- Kartu 3: Area Penuh / Ditutup (Merah) -->
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-slate-500">Area Penuh / Ditutup</div>
+              <div class="mt-1 flex items-baseline gap-2">
+                <span id="kpiFullZones" class="text-3xl font-extrabold font-mono text-rose-600">3</span>
+                <span class="text-xs font-semibold text-slate-400">dari 15 titik area</span>
+              </div>
+              <div class="mt-1.5 text-[11.5px] font-semibold text-rose-600">
+                Dialihkan otomatis ke kantong parkir terdekat
+              </div>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- 4. Peta Interaktif Denah Kampus I Universitas Negeri Malang -->
+        <section id="campusMapSection" class="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden">
+          
+          <!-- Header Peta & Legenda Warna -->
+          <div class="p-4 sm:p-5 bg-slate-50/80 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-base sm:text-lg font-extrabold text-slate-900">
+                Peta Interaktif Parkir Motor — Kampus I Universitas Negeri Malang
+              </h2>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Klik pin area parkir pada peta untuk melihat sisa slot motor, fasilitas, atau memantau CCTV secara langsung.
+              </p>
+            </div>
+
+            <!-- Legenda Warna & Kontrol Zoom -->
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold">
+                <span class="inline-flex items-center gap-1.5 text-emerald-700">
+                  <span class="w-3 h-3 rounded-full bg-emerald-500"></span> Tersedia
+                </span>
+                <span class="inline-flex items-center gap-1.5 text-amber-700">
+                  <span class="w-3 h-3 rounded-full bg-amber-400"></span> Padat
+                </span>
+                <span class="inline-flex items-center gap-1.5 text-rose-700">
+                  <span class="w-3 h-3 rounded-full bg-rose-600"></span> Penuh
+                </span>
+              </div>
+
+              <div class="inline-flex items-center rounded-xl border border-slate-200 bg-white overflow-hidden">
+                <button type="button" onclick="zoomMap(0.2)" class="px-2.5 py-1.5 text-xs font-extrabold text-slate-700 hover:bg-slate-100" title="Perbesar Peta">+</button>
+                <button type="button" onclick="resetMapZoom()" id="zoomPercentLabel" class="px-2.5 py-1.5 text-[11px] font-mono font-bold text-slate-600 border-x border-slate-200 hover:bg-slate-50" title="Reset Zoom">100%</button>
+                <button type="button" onclick="zoomMap(-0.2)" class="px-2.5 py-1.5 text-xs font-extrabold text-slate-700 hover:bg-slate-100" title="Perkecil Peta">&minus;</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Area Viewport Peta + Kartu Detail Mengambang -->
+          <div class="relative w-full bg-[#eef4fa] overflow-hidden select-none">
+            
+            <!-- Kartu Detail Mengambang Saat Pin Ditekan -->
+            <div
+              id="floatingSpotCard"
+              class="sm:absolute sm:top-4 sm:right-4 z-20 m-3 sm:m-0 sm:w-[310px] rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl p-4 text-slate-900 transition-all"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span id="floatCode" class="px-2.5 py-0.5 rounded-lg bg-[#0c2340] text-white font-mono text-xs font-extrabold">
+                      P-A20
+                    </span>
+                    <span id="floatStatusBadge" class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800">
+                      Tersedia
+                    </span>
+                  </div>
+                  <h3 id="floatName" class="mt-2 text-sm font-extrabold text-slate-900 leading-snug">
+                    Parkir Motor GKB A19 &amp; A20
+                  </h3>
+                </div>
+
+                <button
+                  type="button"
+                  onclick="hideFloatingCard()"
+                  class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition"
+                  aria-label="Tutup Kartu Detail"
+                >
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Sisa Slot Motor & Total Kapasitas -->
+              <div class="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                <div class="flex items-baseline justify-between">
+                  <span class="text-xs font-semibold text-slate-500">Sisa Slot Motor</span>
+                  <span id="floatSlotRatio" class="font-mono text-sm font-extrabold text-emerald-700">
+                    36 / 140 slot
+                  </span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                  <div id="floatProgressBar" class="h-full rounded-full bg-emerald-500 transition-all duration-300" style="width: 74%;"></div>
+                </div>
+                <div id="floatFacilities" class="flex flex-wrap gap-1.5 pt-1">
+                  <!-- Tag fasilitas di-render via JS -->
+                </div>
+              </div>
+
+              <!-- 2 Tombol Aksi: Jadikan Tujuan Rute & Buka CCTV Live -->
+              <div class="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onclick="setAsRouteDestination(selectedSpotId)"
+                  class="px-3 py-2.5 rounded-xl bg-[#0066e6] hover:bg-[#0052bd] text-white text-xs font-bold shadow-2xs transition"
+                >
+                  Jadikan Tujuan Rute
+                </button>
+                <button
+                  type="button"
+                  onclick="openCctvModal(selectedSpotId)"
+                  class="px-3 py-2.5 rounded-xl bg-[#0c2340] hover:bg-slate-800 text-white text-xs font-bold shadow-2xs transition inline-flex items-center justify-center gap-1"
+                >
+                  <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Buka CCTV Live
+                </button>
+              </div>
+            </div>
+
+            <!-- PETA SVG KAMPUS I UNIVERSITAS NEGERI MALANG -->
+            <svg
+              id="umCampusSvg"
+              viewBox="0 0 960 660"
+              class="w-full h-auto block cursor-grab active:cursor-grabbing"
+              role="img"
+              aria-label="Peta Interaktif Parkir Motor Kampus I Universitas Negeri Malang"
+            >
+              <defs>
+                <pattern id="softMapGrid" width="28" height="28" patternUnits="userSpaceOnUse">
+                  <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#cbd5e1" stroke-width="0.6" stroke-opacity="0.45" />
+                </pattern>
+                <filter id="pinDropShadow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-color="#0f172a" flood-opacity="0.28" />
+                </filter>
+                <filter id="routeSoftGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="2.5" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+
+              <!-- Latar Peta Cerah -->
+              <rect width="960" height="660" fill="#eef4fa" />
+              <rect width="960" height="660" fill="url(#softMapGrid)" />
+
+              <g id="mapTransformLayer" transform="translate(0,0) scale(1)">
+                
+                <!-- Poligon Area Kampus I UM -->
+                <polygon
+                  points="228,34 780,192 816,254 794,386 736,466 626,626 454,634 362,570 138,528 162,338 266,262 202,148"
+                  fill="#ffffff"
+                  stroke="#94a3b8"
+                  stroke-width="2"
+                  stroke-dasharray="10 5"
+                />
+
+                <!-- Ruang Terbuka Hijau Kampus -->
+                <ellipse cx="408" cy="184" rx="72" ry="54" fill="#dcfce7" />
+                <rect x="274" y="336" width="154" height="174" rx="18" fill="#ecfdf5" />
+
+                <!-- Jalan Raya Batas Luar Kampus -->
+                <!-- Jl. Veteran (Utara) -->
+                <path d="M 210 14 L 808 184" fill="none" stroke="#cbd5e1" stroke-width="18" stroke-linecap="round" />
+                <path d="M 210 14 L 808 184" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="10 8" />
+                <text x="515" y="92" transform="rotate(16 515 92)" text-anchor="middle" fill="#334155" font-size="11" font-weight="800" letter-spacing="1.2">
+                  JL. VETERAN (UTARA)
+                </text>
+
+                <!-- Jl. Semarang / GT2 (Timur) -->
+                <path d="M 808 184 L 834 262 L 798 416 L 748 482" fill="none" stroke="#cbd5e1" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M 798 416 L 936 448" fill="none" stroke="#cbd5e1" stroke-width="14" stroke-linecap="round" />
+                <text x="866" y="424" transform="rotate(13 866 424)" text-anchor="middle" fill="#334155" font-size="10.5" font-weight="800">
+                  JL. SEMARANG (GT2)
+                </text>
+
+                <!-- Jl. Surabaya (Selatan) -->
+                <path d="M 116 540 L 366 586 L 460 646 L 642 638 L 748 482" fill="none" stroke="#cbd5e1" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
+                <text x="364" y="628" transform="rotate(14 364 628)" text-anchor="middle" fill="#334155" font-size="10.5" font-weight="800" letter-spacing="1">
+                  JL. SURABAYA (SELATAN)
+                </text>
+
+                <!-- Jaringan Jalan Internal: Ring Road UM & Jl. Ambarawa -->
+                <path
+                  d="M 262 112 L 584 160 L 758 224 L 718 408 L 622 566 L 444 576 L 194 496 L 222 326 L 298 264 Z"
+                  fill="none"
+                  stroke="#e2e8f0"
+                  stroke-width="13"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M 262 112 L 584 160 L 758 224 L 718 408 L 622 566 L 444 576 L 194 496 L 222 326 L 298 264 Z"
+                  fill="none"
+                  stroke="#64748b"
+                  stroke-width="1.6"
+                  stroke-dasharray="7 5"
+                  stroke-linejoin="round"
+                />
+                <text x="456" y="133" text-anchor="middle" fill="#475569" font-size="9" font-weight="700" letter-spacing="0.8">
+                  RING ROAD KAMPUS UM
+                </text>
+
+                <!-- Jl. Ambarawa -->
+                <path d="M 278 288 L 744 360" fill="none" stroke="#e2e8f0" stroke-width="11" stroke-linecap="round" />
+                <path d="M 278 288 L 744 360" fill="none" stroke="#64748b" stroke-width="1.4" stroke-dasharray="6 4" />
+                <text x="518" y="320" transform="rotate(8.7 518 320)" text-anchor="middle" fill="#475569" font-size="9" font-weight="800">
+                  JL. AMBARAWA
+                </text>
+
+                <!-- Jalur Penghubung 3 Gerbang -->
+                <path d="M 798 416 L 656 398" fill="none" stroke="#e2e8f0" stroke-width="12" stroke-linecap="round" />
+                <path d="M 596 122 L 584 160" fill="none" stroke="#e2e8f0" stroke-width="11" stroke-linecap="round" />
+                <path d="M 556 640 L 556 572" fill="none" stroke="#e2e8f0" stroke-width="11" stroke-linecap="round" />
+
+                <!-- BLOK GEDUNG UTAMA KAMPUS I UM -->
+                <!-- Sektor Utara & Stadion D21 -->
+                <rect x="234" y="64" width="66" height="40" rx="6" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1" />
+                <text x="267" y="87" text-anchor="middle" fill="#334155" font-size="8.5" font-weight="700">E12–E16</text>
+
+                <rect x="336" y="80" width="44" height="30" rx="5" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1" />
+                <text x="358" y="98" text-anchor="middle" fill="#334155" font-size="8.5" font-weight="700">D22</text>
+
+                <rect x="408" y="100" width="44" height="30" rx="5" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1" />
+                <text x="430" y="118" text-anchor="middle" fill="#334155" font-size="8.5" font-weight="700">D23</text>
+
+                <rect x="524" y="126" width="42" height="32" rx="5" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1" />
+                <text x="545" y="145" text-anchor="middle" fill="#334155" font-size="8.5" font-weight="700">C9</text>
+
+                <!-- Stadion D21 -->
+                <rect x="344" y="164" width="66" height="94" rx="33" fill="#bbf7d0" stroke="#16a34a" stroke-width="1.8" />
+                <rect x="357" y="178" width="40" height="66" rx="18" fill="#86efac" stroke="#15803d" stroke-width="1" />
+                <text x="377" y="210" text-anchor="middle" fill="#14532d" font-size="9.5" font-weight="800">D21</text>
+                <text x="377" y="221" text-anchor="middle" fill="#14532d" font-size="7.5" font-weight="700">Stadion</text>
+
+                <rect x="434" y="234" width="52" height="34" rx="5" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1" />
+                <text x="460" y="254" text-anchor="middle" fill="#334155" font-size="8.5" font-weight="700">C7 / C5</text>
+
+                <rect x="332" y="264" width="52" height="25" rx="5" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1" />
+                <text x="358" y="280" text-anchor="middle" fill="#334155" font-size="8.5" font-weight="700">D20</text>
+
+                <!-- Timur Laut: GKB A19 & A20 -->
+                <rect x="656" y="228" width="122" height="114" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6" />
+                <rect x="716" y="238" width="52" height="42" rx="6" fill="#93c5fd" stroke="#1d4ed8" stroke-width="1.2" />
+                <text x="742" y="262" text-anchor="middle" fill="#1e3a8a" font-size="9.5" font-weight="800">A20</text>
+                <rect x="668" y="290" width="54" height="42" rx="6" fill="#93c5fd" stroke="#1d4ed8" stroke-width="1.2" />
+                <text x="695" y="314" text-anchor="middle" fill="#1e3a8a" font-size="9.5" font-weight="800">A19</text>
+                <text x="688" y="253" text-anchor="middle" fill="#1e3a8a" font-size="8.5" font-weight="800">GKB</text>
+                <text x="688" y="264" text-anchor="middle" fill="#1e40af" font-size="7.5" font-weight="700">A19–A20</text>
+
+                <!-- FMIPA / Teknik B11-B19 -->
+                <rect x="498" y="334" width="90" height="74" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.4" />
+                <text x="543" y="368" text-anchor="middle" fill="#1e3a8a" font-size="9.5" font-weight="800">B11–B19</text>
+                <text x="543" y="380" text-anchor="middle" fill="#1d4ed8" font-size="7.5" font-weight="700">FMIPA &amp; Teknik</text>
+
+                <!-- Graha Rektorat A -->
+                <rect x="610" y="352" width="66" height="44" rx="8" fill="#0c2340" stroke="#38bdf8" stroke-width="1.8" />
+                <text x="643" y="372" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="800">GEDUNG A</text>
+                <text x="643" y="384" text-anchor="middle" fill="#bae6fd" font-size="7.5" font-weight="700">Graha Rektorat</text>
+
+                <!-- Masjid Al-Hikmah C4 -->
+                <circle cx="424" cy="342" r="24" fill="#fef3c7" stroke="#d97706" stroke-width="1.6" />
+                <text x="424" y="340" text-anchor="middle" fill="#92400e" font-size="9.5" font-weight="800">C4</text>
+                <text x="424" y="351" text-anchor="middle" fill="#b45309" font-size="7" font-weight="700">Al-Hikmah</text>
+
+                <!-- Graha Cakrawala C3 -->
+                <rect x="372" y="384" width="76" height="64" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6" />
+                <polygon points="410,390 440,416 410,442 380,416" fill="#93c5fd" stroke="#1d4ed8" stroke-width="1" />
+                <text x="410" y="414" text-anchor="middle" fill="#1e3a8a" font-size="9.5" font-weight="800">C3</text>
+                <text x="410" y="425" text-anchor="middle" fill="#1e3a8a" font-size="7" font-weight="700">Graha Cakrawala</text>
+
+                <!-- Fakultas Sastra / FIS D3-D19 -->
+                <rect x="224" y="320" width="102" height="164" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.4" />
+                <text x="275" y="398" text-anchor="middle" fill="#1e3a8a" font-size="9.5" font-weight="800">D3–D19</text>
+                <text x="275" y="410" text-anchor="middle" fill="#1d4ed8" font-size="7.5" font-weight="700">Sastra &amp; FIS</text>
+
+                <!-- Blok Tengah & Selatan -->
+                <rect x="466" y="428" width="74" height="76" rx="6" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1" />
+                <text x="503" y="470" text-anchor="middle" fill="#334155" font-size="9" font-weight="700">B4–B10</text>
+
+                <rect x="556" y="442" width="94" height="72" rx="6" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1" />
+                <text x="603" y="482" text-anchor="middle" fill="#334155" font-size="9" font-weight="700">A6–A15</text>
+
+                <rect x="456" y="584" width="88" height="36" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.4" />
+                <text x="500" y="605" text-anchor="middle" fill="#1e3a8a" font-size="9" font-weight="800">LF • LU • LB</text>
+
+                <!-- MARKER 3 GERBANG UTAMA UM -->
+                <g transform="translate(798, 416)">
+                  <rect x="-46" y="-13" width="92" height="26" rx="13" fill="#0c2340" stroke="#38bdf8" stroke-width="2" />
+                  <text x="0" y="4" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">GT2 • SEMARANG</text>
+                </g>
+                <g transform="translate(596, 122)">
+                  <rect x="-46" y="-12" width="92" height="24" rx="12" fill="#0c2340" stroke="#38bdf8" stroke-width="2" />
+                  <text x="0" y="4" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">GT • VETERAN</text>
+                </g>
+                <g transform="translate(556, 640)">
+                  <rect x="-46" y="-12" width="92" height="24" rx="12" fill="#0c2340" stroke="#38bdf8" stroke-width="2" />
+                  <text x="0" y="4" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">GT • SURABAYA</text>
+                </g>
+
+                <!-- LAYER ANIMASI RUTE MOTOR & JALUR JALAN KAKI -->
+                <g id="routeOverlayLayer">
+                  <!-- Garis Putih Outline Rute Motor -->
+                  <path id="motorRouteBg" d="" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" />
+                  <!-- Garis Biru Animasi Rute Motor -->
+                  <path id="motorRouteFg" d="" fill="none" stroke="#0066e6" stroke-width="4.5" stroke-dasharray="10 8" stroke-linecap="round" stroke-linejoin="round" filter="url(#routeSoftGlow)" class="motor-route-anim" />
+                  <!-- Garis Putus-putus Hijau Jalur Jalan Kaki ke Gedung Tujuan -->
+                  <path id="walkRouteFg" d="" fill="none" stroke="#059669" stroke-width="3.5" stroke-dasharray="4 5" stroke-linecap="round" stroke-linejoin="round" class="walk-route-anim" />
+                  <!-- Pin Gedung Tujuan -->
+                  <g id="buildingGoalMarker" transform="translate(-100,-100)">
+                    <circle cx="0" cy="0" r="10" fill="#059669" stroke="#ffffff" stroke-width="2.5" />
+                    <circle cx="0" cy="0" r="3.5" fill="#ffffff" />
+                  </g>
+                </g>
+
+                <!-- 15 PIN TITIK PARKIR MOTOR (DI-RENDER DINAMIS VIA JS) -->
+                <g id="motorPinsLayer"></g>
+
+              </g>
+
+              <!-- Kompas Mata Angin (U / T / S / B) -->
+              <g transform="translate(46, 46)">
+                <circle cx="0" cy="0" r="24" fill="#ffffff" fill-opacity="0.95" stroke="#cbd5e1" stroke-width="1.2" />
+                <polygon points="0,-16 4,-4 0,-7 -4,-4" fill="#0c2340" />
+                <polygon points="0,16 4,4 0,7 -4,4" fill="#94a3b8" />
+                <text x="0" y="-27" text-anchor="middle" fill="#0c2340" font-size="10" font-weight="800">U</text>
+                <text x="0" y="35" text-anchor="middle" fill="#475569" font-size="9.5" font-weight="700">S</text>
+                <text x="-31" y="3" text-anchor="middle" fill="#475569" font-size="9.5" font-weight="700">B</text>
+                <text x="31" y="3" text-anchor="middle" fill="#475569" font-size="9.5" font-weight="700">T</text>
+              </g>
+            </svg>
+          </div>
+
+          <!-- Kartu Petunjuk Arah Singkat di Bawah Peta -->
+          <div class="p-4 sm:p-5 bg-blue-50/70 border-t border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-start gap-3">
+              <div class="w-9 h-9 rounded-xl bg-[#0066e6] text-white flex items-center justify-center shrink-0 mt-0.5">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <div class="text-xs font-extrabold text-[#0c2340]">
+                  Petunjuk Arah Rute Aktif
+                </div>
+                <p id="routeTurnByTurnText" class="text-xs sm:text-sm text-slate-700 mt-0.5 leading-relaxed">
+                  Masuk melalui <strong>Gerbang Utama Jl. Semarang / GT2</strong> &rarr; ikuti poros Ring Road Timur menuju <strong>P-A20 (Parkir Motor GKB A19 &amp; A20)</strong> &rarr; lanjutkan jalan kaki 1 menit (garis hijau) ke <strong>GKB A19–A20</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 text-[11px] font-bold shrink-0">
+              <span class="inline-flex items-center gap-1.5 text-[#0066e6]">
+                <span class="w-4 h-1 rounded bg-[#0066e6]"></span> Rute Motor
+              </span>
+              <span class="inline-flex items-center gap-1.5 text-emerald-700">
+                <span class="w-4 h-1 rounded border-b-2 border-dashed border-emerald-600"></span> Jalan Kaki
+              </span>
+            </div>
+          </div>
+
+        </section>
+
+      </div>
+
+      <!-- =======================================================================
+           VIEW 2: DAFTAR LOKASI & CCTV LIVE (VIA MENU GARIS TIGA)
+           ======================================================================= -->
+      <div id="view-lokasi" class="hidden space-y-6">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <button type="button" onclick="switchView('beranda')" class="text-xs font-bold text-[#0066e6] hover:underline mb-1 inline-flex items-center gap-1">
+              &larr; Kembali ke Beranda Utama
+            </button>
+            <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">
+              Daftar Lokasi Parkir Motor &amp; CCTV Live
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500">
+              Pantau seluruh 15 kantong parkir sepeda motor Kampus I UM beserta kamera CCTV AI secara real-time.
+            </p>
+          </div>
+        </div>
+
+        <!-- Bar Filter Status & Pencarian -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs">
+          <div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter Status Parkir">
+            <button type="button" data-loc-filter="all" onclick="setLocationFilter('all')" class="loc-filter-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-[#0c2340] text-white transition">
+              Semua (15)
+            </button>
+            <button type="button" data-loc-filter="available" onclick="setLocationFilter('available')" class="loc-filter-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition">
+              Tersedia
+            </button>
+            <button type="button" data-loc-filter="crowded" onclick="setLocationFilter('crowded')" class="loc-filter-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition">
+              Padat
+            </button>
+            <button type="button" data-loc-filter="full" onclick="setLocationFilter('full')" class="loc-filter-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 transition">
+              Penuh
+            </button>
+          </div>
+
+          <div class="relative w-full md:w-72">
+            <input
+              id="locationSearchInput"
+              type="text"
+              oninput="renderLocationsGrid()"
+              placeholder="Cari kode area atau gedung (mis. P-A20, Sastra)..."
+              class="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#0066e6]"
+            />
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Grid Kartu 15 Titik Parkir Motor -->
+        <div id="locationsCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Di-render dinamis via JS -->
+        </div>
+
+      </div>
+
+      <!-- =======================================================================
+           VIEW 3: JAM SIBUK & TREN PARKIR (VIA MENU GARIS TIGA)
+           ======================================================================= -->
+      <div id="view-tren" class="hidden space-y-6">
+        
+        <div>
+          <button type="button" onclick="switchView('beranda')" class="text-xs font-bold text-[#0066e6] hover:underline mb-1 inline-flex items-center gap-1">
+            &larr; Kembali ke Beranda Utama
+          </button>
+          <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">
+            Jam Sibuk &amp; Tren Kepadatan Parkir Motor
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-500">
+            Analisis rata-rata okupansi lahan parkir sepeda motor di Kampus I UM pukul 06.30–17.00 WIB.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          
+          <!-- Grafik Interaktif Kepadatan Per Jam -->
+          <div class="lg:col-span-8 bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-2xs space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-base font-extrabold text-slate-900">Grafik Kepadatan Parkir Motor Harian</h2>
+                <p class="text-xs text-slate-500">Klik atau arahkan kursor pada batang grafik untuk melihat detail persentase</p>
+              </div>
+              <span id="hourlySelectedInfo" class="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 font-mono text-xs font-bold">
+                Puncak Sibuk: 10.00 WIB (89% Terisi)
+              </span>
+            </div>
+
+            <!-- Bar Chart HTML/Tailwind Interaktif -->
+            <div id="hourlyBarChartContainer" class="pt-4 pb-2 px-2 bg-slate-50 rounded-2xl border border-slate-200/80">
+              <!-- Di-render via JS -->
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-600 pt-1">
+              <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-500"></span> Lengang (&lt; 65%)</span>
+              <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-400"></span> Ramai (65% – 84%)</span>
+              <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-rose-500"></span> Sangat Padat (&ge; 85%)</span>
+            </div>
+          </div>
+
+          <!-- Tips Waktu Terbaik Datang ke Kampus -->
+          <div class="lg:col-span-4 space-y-4">
+            <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-3xl p-5 text-white shadow-sm space-y-3">
+              <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 text-xs font-bold">
+                Rekomendasi Waktu Datang
+              </div>
+              <h3 class="text-lg font-extrabold leading-snug">
+                Datang Sebelum Pukul 07.15 WIB untuk Slot Terbaik
+              </h3>
+              <p class="text-xs text-emerald-50 leading-relaxed">
+                Pada pukul 06.30–07.15 WIB, tingkat keterisian parkir motor masih di bawah 45%. Anda dapat memilih area berkanopi seperti <strong>P-A20</strong>, <strong>P4</strong>, maupun <strong>P-D20</strong> dengan leluasa.
+              </p>
+            </div>
+
+            <div class="bg-white rounded-3xl border border-slate-200 p-5 space-y-3 shadow-2xs">
+              <h3 class="text-sm font-extrabold text-slate-900">Strategi Menghindari Antrean</h3>
+              <ul class="space-y-2.5 text-xs text-slate-600 leading-relaxed">
+                <li class="flex items-start gap-2">
+                  <span class="w-5 h-5 rounded-full bg-blue-100 text-[#0066e6] font-extrabold text-[11px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+                  <span><strong>Pukul 09.30–11.00 WIB</strong> merupakan puncak kepadatan tertinggi. Pertimbangkan masuk via <strong>Gerbang Jl. Surabaya</strong> menuju <strong>P1 atau P2</strong>.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="w-5 h-5 rounded-full bg-blue-100 text-[#0066e6] font-extrabold text-[11px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+                  <span><strong>Pergantian Siang (12.00–12.45 WIB)</strong> membuka banyak slot baru seiring selesainya sesi pagi.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="w-5 h-5 rounded-full bg-blue-100 text-[#0066e6] font-extrabold text-[11px] flex items-center justify-center shrink-0 mt-0.5">3</span>
+                  <span>Selalu cek <strong>CCTV Live</strong> sebelum memutar ke area dalam agar tidak membuang waktu.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- =======================================================================
+           VIEW 4: PANDUAN & TATA TERTIB PARKIR (VIA MENU GARIS TIGA)
+           ======================================================================= -->
+      <div id="view-panduan" class="hidden space-y-6">
+        
+        <div>
+          <button type="button" onclick="switchView('beranda')" class="text-xs font-bold text-[#0066e6] hover:underline mb-1 inline-flex items-center gap-1">
+            &larr; Kembali ke Beranda Utama
+          </button>
+          <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">
+            Panduan &amp; Tata Tertib Parkir Motor UM
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-500">
+            Langkah penggunaan SIPARKIR, jam operasional gerbang, peraturan parkir motor, dan pelaporan kondisi lapangan.
+          </p>
+        </div>
+
+        <!-- 3 Langkah Mudah Menggunakan SIPARKIR -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-white rounded-3xl border border-slate-200 p-5 shadow-2xs space-y-2.5">
+            <div class="w-11 h-11 rounded-2xl bg-blue-50 text-[#0066e6] flex items-center justify-center font-extrabold text-lg">
+              1
+            </div>
+            <h2 class="text-base font-extrabold text-slate-900">Tentukan Gerbang &amp; Gedung</h2>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Pilih gerbang masuk kampus terdekat dari arah kedatangan Anda (Jl. Semarang, Jl. Veteran, atau Jl. Surabaya) beserta gedung tujuan Anda.
+            </p>
+          </div>
+
+          <div class="bg-white rounded-3xl border border-slate-200 p-5 shadow-2xs space-y-2.5">
+            <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-extrabold text-lg">
+              2
+            </div>
+            <h2 class="text-base font-extrabold text-slate-900">Cek Slot &amp; Pantau CCTV</h2>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Lihat indikator warna (Hijau/Kuning/Merah) dan buka kamera CCTV AI untuk memastikan baris parkir motor benar-benar masih lowong.
+            </p>
+          </div>
+
+          <div class="bg-white rounded-3xl border border-slate-200 p-5 shadow-2xs space-y-2.5">
+            <div class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-extrabold text-lg">
+              3
+            </div>
+            <h2 class="text-base font-extrabold text-slate-900">Ikuti Rute &amp; Parkir Tertib</h2>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Ikuti garis rute biru menuju kantong parkir yang direkomendasikan, parkirkan motor sesuai garis petak, dan gunakan kunci ganda.
+            </p>
+          </div>
+        </section>
+
+        <!-- Jam Operasional Gerbang & Tata Tertib + Form Lapor Kondisi Lapangan -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          
+          <!-- Jam Operasional & Aturan Parkir Motor UM -->
+          <div class="lg:col-span-6 bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-2xs space-y-5">
+            <div>
+              <h3 class="text-base font-extrabold text-slate-900 mb-3">Jam Operasional Gerbang Masuk Motor UM</h3>
+              <div class="space-y-2 text-xs">
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                  <span class="font-bold text-slate-800">Gerbang Utama Jl. Semarang (GT2)</span>
+                  <span class="font-mono font-bold text-emerald-700">05.30 – 22.00 WIB</span>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                  <span class="font-bold text-slate-800">Gerbang Utara Jl. Veteran</span>
+                  <span class="font-mono font-bold text-emerald-700">06.00 – 21.00 WIB</span>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                  <span class="font-bold text-slate-800">Gerbang Selatan Jl. Surabaya</span>
+                  <span class="font-mono font-bold text-emerald-700">06.00 – 21.00 WIB</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-base font-extrabold text-slate-900 mb-2.5">Tata Tertib Parkir Sepeda Motor</h3>
+              <ul class="space-y-2 text-xs text-slate-600 leading-relaxed">
+                <li class="flex items-start gap-2">
+                  <span class="text-emerald-600 font-extrabold">&#10003;</span>
+                  <span>Wajib menunjukkan <strong>KTM / STNK aktif</strong> saat pemeriksaan petugas keamanan gerbang.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-emerald-600 font-extrabold">&#10003;</span>
+                  <span>Pengendara dan pembonceng wajib mengenakan <strong>helm standar SNI</strong> di seluruh jalan Ring Road UM.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-emerald-600 font-extrabold">&#10003;</span>
+                  <span>Dilarang memarkir sepeda motor di bahu jalan Ring Road, jalur disabilitas, maupun area khusus pejalan kaki.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-emerald-600 font-extrabold">&#10003;</span>
+                  <span>Gunakan kunci stang dan kunci pengaman tambahan sebelum meninggalkan kendaraan.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Formulir Lapor Kondisi Lapangan -->
+          <div class="lg:col-span-6 bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-2xs space-y-4">
+            <div>
+              <h3 class="text-base font-extrabold text-slate-900">Lapor Kondisi Lapangan</h3>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Laporkan jika ada area parkir penuh mendadak, motor parkir meluber, atau kendala kamera CCTV.
+              </p>
+            </div>
+
+            <form onsubmit="submitFieldReport(event)" class="space-y-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label for="reportSpotSelect" class="block text-xs font-bold text-slate-700 mb-1">Area Parkir Motor</label>
+                  <select id="reportSpotSelect" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs font-semibold text-slate-800">
+                    <!-- Opsi diisi via JS -->
+                  </select>
+                </div>
+                <div>
+                  <label for="reportCategorySelect" class="block text-xs font-bold text-slate-700 mb-1">Kategori Laporan</label>
+                  <select id="reportCategorySelect" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs font-semibold text-slate-800">
+                    <option value="Penuh Mendadak">Area Penuh Mendadak</option>
+                    <option value="Parkir Meluber">Parkir Meluber ke Jalur</option>
+                    <option value="Kendala CCTV / Portal">Kendala Kamera CCTV / Portal</option>
+                    <option value="Info Slot Kosong">Info Banyak Slot Kosong</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label for="reportNoteInput" class="block text-xs font-bold text-slate-700 mb-1">Keterangan Singkat</label>
+                <textarea
+                  id="reportNoteInput"
+                  rows="2"
+                  required
+                  placeholder="Contoh: Baris sisi timur P-A20 sedang ada perbaikan atap kanopi..."
+                  class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#0066e6]"
+                ></textarea>
+              </div>
+
+              <button
+                type="submit"
+                class="w-full py-2.5 px-4 rounded-xl bg-[#0066e6] hover:bg-[#0052bd] text-white font-bold text-xs shadow-xs transition cursor-pointer"
+              >
+                Kirim Laporan ke Komunitas &amp; Petugas
+              </button>
+            </form>
+
+            <!-- Daftar Laporan Komunitas Terkini -->
+            <div class="pt-3 border-t border-slate-100 space-y-2">
+              <div class="text-xs font-extrabold text-slate-700">Laporan Mahasiswa Terkini</div>
+              <div id="communityReportsList" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <!-- Di-render via JS -->
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- =======================================================================
+           VIEW 5: TENTANG SIPARKIR (VIA MENU GARIS TIGA)
+           ======================================================================= -->
+      <div id="view-tentang" class="hidden space-y-6">
+        
+        <div>
+          <button type="button" onclick="switchView('beranda')" class="text-xs font-bold text-[#0066e6] hover:underline mb-1 inline-flex items-center gap-1">
+            &larr; Kembali ke Beranda Utama
+          </button>
+          <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">
+            Tentang Inovasi SIPARKIR UM
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-500">
+            Implementasi Sistem Pemantau Ketersediaan Lahan Parkir Berbasis Web Interaktif dengan Indikator Visual Real-Time di Universitas Negeri Malang.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          
+          <!-- Kartu 1: Latar Belakang & Tujuan -->
+          <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-2xs space-y-3">
+            <span class="px-3 py-1 rounded-full bg-blue-50 text-[#0066e6] text-xs font-extrabold">
+              Latar Belakang &amp; Tujuan
+            </span>
+            <h2 class="text-lg font-extrabold text-slate-900">
+              Mengakhiri Kebiasaan Berkeliling Mencari Parkir di Kampus
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Mahasiswa sering kali menghabiskan waktu berkeliling dari satu kantong parkir ke kantong parkir lainnya hanya untuk mendapati lahan sudah penuh. <strong>SIPARKIR</strong> dirancang untuk memberikan informasi ketersediaan lahan parkir sepeda motor secara <em>real-time</em> sebelum pengendara memasuki area parkir, sehingga mencegah kemacetan internal dan menghemat waktu di lingkungan Kampus I Universitas Negeri Malang.
+            </p>
+          </div>
+
+          <!-- Kartu 2: Sasaran Pengguna -->
+          <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-2xs space-y-3">
+            <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-extrabold">
+              Sasaran Pengguna
+            </span>
+            <h2 class="text-lg font-extrabold text-slate-900">
+              Mahasiswa &amp; Unit Pengelolaan Parkir UM
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Sistem ini difokuskan untuk <strong>mahasiswa pengendara sepeda motor</strong> yang membutuhkan kepastian ketersediaan slot parkir terdekat dari gedung tujuan, serta <strong>unit pengelolaan parkir Universitas Negeri Malang</strong> untuk memantau distribusi okupansi lahan, jam sibuk harian, dan laporan kondisi lapangan secara terpusat.
+            </p>
+          </div>
+
+          <!-- Kartu 3: Keunggulan Sistem -->
+          <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-2xs space-y-3">
+            <span class="px-3 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-extrabold">
+              Keunggulan Sistem
+            </span>
+            <h2 class="text-lg font-extrabold text-slate-900">
+              Indikator Visual Real-Time &amp; Deteksi Kamera AI
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Antarmuka visual berbasis kode warna (<strong>Hijau</strong> untuk Tersedia, <strong>Kuning</strong> untuk Padat, dan <strong>Merah</strong> untuk Penuh) pada denah Kampus I UM sangat intuitif dan cepat dipahami. Pemantauan didukung integrasi CCTV berbasis Computer Vision (YOLOv8) serta fitur penyamaran pelat nomor otomatis untuk menjaga privasi pengguna.
+            </p>
+          </div>
+
+          <!-- Kartu 4: Cakupan Layanan -->
+          <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-2xs space-y-3">
+            <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-extrabold">
+              Cakupan Layanan Kampus I UM
+            </span>
+            <h2 class="text-lg font-extrabold text-slate-900">
+              15 Kantong Parkir Motor &amp; 3 Gerbang Masuk Utama
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Mencakup pemetaan 15 titik kantong parkir sepeda motor di seluruh poros Ring Road Kampus I UM (Jl. Semarang 5 Malang) lengkap dengan rekomendasi pengalihan otomatis apabila kantong parkir utama telah mencapai kapasitas penuh.
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- FOOTER APLIKASI -->
+    <footer class="bg-white border-t border-slate-200 mt-10">
+      <div class="max-w-[1380px] mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+        <div>
+          <strong class="text-[#0c2340]">SIPARKIR UM</strong> — Sistem Pemantau Lahan Parkir Motor Real-Time Universitas Negeri Malang
+        </div>
+        <div>
+          Gunakan menu garis tiga (&#9776;) di kiri atas untuk akses daftar CCTV, tren jam sibuk, dan panduan parkir.
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- =========================================================================
+       MODAL 1: KAMERA CCTV LIVE & DETEKSI AI KHUSUS SEPEDA MOTOR (YOLOv8)
+       ========================================================================= -->
+  <div id="cctvModal" class="fixed inset-0 z-50 hidden items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-xs" role="dialog" aria-modal="true" aria-labelledby="cctvModalTitle">
+    <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[94vh]">
+      
+      <!-- Header Modal -->
+      <div class="px-5 py-4 bg-[#0c2340] text-white flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+          </span>
+          <div>
+            <h3 id="cctvModalTitle" class="text-sm sm:text-lg font-extrabold tracking-tight">
+              CCTV Live Parkir Motor — Area P-A20
+            </h3>
+            <p id="cctvModalSub" class="text-xs font-mono text-blue-200">
+              CAM-MOTOR-A20 • Parkir Motor GKB A19 &amp; A20 • YOLOv8 Motorcycle Detector
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onclick="closeCctvModal()"
+          class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition"
+          aria-label="Tutup CCTV"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Body Modal -->
+      <div class="p-4 sm:p-5 overflow-y-auto space-y-4 bg-slate-50">
+        
+        <!-- HTML5 Canvas Simulasi Parkir Sepeda Motor -->
+        <div class="relative w-full rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-800 shadow-inner aspect-[16/9]">
+          <canvas id="cctvMotorCanvas" class="w-full h-full block"></canvas>
+          <div class="cctv-scanlines absolute inset-0 pointer-events-none opacity-35"></div>
+
+          <!-- Top-Left HUD -->
+          <div class="absolute top-3 left-3 flex flex-wrap items-center gap-2 pointer-events-none">
+            <span class="px-2.5 py-1 rounded-lg bg-black/75 text-emerald-400 font-mono text-[11px] font-bold border border-emerald-500/30">
+              ● YOLOv8 MOTOR ACTIVE
+            </span>
+            <span id="hudBlurStatus" class="px-2.5 py-1 rounded-lg bg-blue-950/85 text-sky-300 font-mono text-[11px] font-bold border border-sky-400/30">
+              BLUR PELAT NOMOR: AKTIF
+            </span>
+          </div>
+
+          <!-- Top-Right Clock -->
+          <div class="absolute top-3 right-3 pointer-events-none">
+            <span id="cctvClockText" class="px-2.5 py-1 rounded-lg bg-black/75 text-white font-mono text-[11px] border border-white/15">
+              15/11/2026 23:16:00 WIB
+            </span>
+          </div>
+
+          <!-- Bottom Counter Overlay -->
+          <div class="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+            <div class="px-3 py-1.5 rounded-xl bg-black/80 text-white text-xs font-mono border border-white/15">
+              Motor Terparkir: <span id="hudMotorParked" class="text-amber-400 font-bold">104</span> Unit | Slot Kosong: <span id="hudMotorEmpty" class="text-emerald-400 font-bold">36</span> Slot
+            </div>
+            <div id="hudZoneStatusTag" class="px-3 py-1.5 rounded-xl bg-emerald-600/95 text-white text-xs font-bold shadow">
+              STATUS: TERSEDIA
+            </div>
+          </div>
+        </div>
+
+        <!-- Kontrol Layer AI & Simulasi +1 / -1 Motor -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          
+          <div class="lg:col-span-7 bg-white p-4 rounded-2xl border border-slate-200 flex flex-col justify-between gap-3">
+            <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Pengaturan Tampilan Kamera AI</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label class="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
+                <div>
+                  <div class="text-xs font-bold text-slate-800">Deteksi AI (YOLOv8 Motor)</div>
+                  <div class="text-[11px] text-slate-500">Kotak deteksi sepeda motor</div>
+                </div>
+                <input type="checkbox" checked onchange="toggleCctvLayer('aiBox', this.checked)" class="w-4 h-4 accent-[#0066e6] rounded cursor-pointer" />
+              </label>
+
+              <label class="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
+                <div>
+                  <div class="text-xs font-bold text-slate-800">Blur Pelat Nomor (Privasi)</div>
+                  <div class="text-[11px] text-slate-500">Samarkan pelat otomatis</div>
+                </div>
+                <input type="checkbox" checked onchange="toggleCctvLayer('privacyBlur', this.checked)" class="w-4 h-4 accent-[#0066e6] rounded cursor-pointer" />
+              </label>
+            </div>
+          </div>
+
+          <div class="lg:col-span-5 bg-white p-4 rounded-2xl border border-slate-200 flex flex-col justify-between gap-3">
+            <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Uji Simulasi Real-Time</div>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onclick="adjustMotorCount(1)"
+                class="px-3 py-3 rounded-xl bg-[#0066e6] hover:bg-[#0052bd] text-white text-xs font-bold shadow-xs transition active:scale-[0.98]"
+              >
+                +1 Motor Masuk
+              </button>
+              <button
+                type="button"
+                onclick="adjustMotorCount(-1)"
+                class="px-3 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold border border-slate-200 transition active:scale-[0.98]"
+              >
+                -1 Motor Keluar
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 2: BANTUAN LUPA KATA SANDI AKUN UM
+       ========================================================================= -->
+  <div id="forgotModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs" role="dialog" aria-modal="true">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 bg-[#0c2340] text-white flex items-center justify-between">
+        <h3 class="text-base font-extrabold">Bantuan Reset Sandi Akun UM</h3>
+        <button type="button" onclick="closeForgotModal()" class="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-5 space-y-3 text-xs sm:text-sm text-slate-600 leading-relaxed">
+        <p>
+          Akun <strong>SIPARKIR UM</strong> menggunakan kredensial akun resmi sivitas akademika <strong>Universitas Negeri Malang</strong>.
+        </p>
+        <div class="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-slate-800 text-xs space-y-1.5">
+          <div class="font-extrabold text-[#0c2340]">Cara Mengatur Ulang Kata Sandi:</div>
+          <ol class="list-decimal list-inside space-y-1">
+            <li>Buka laman pemulihan akun resmi di <strong>sso.um.ac.id</strong>.</li>
+            <li>Atau kunjungi layanan bantuan terpadu di <strong>Graha Rektorat Lt. 1 UM</strong> dengan membawa KTM aktif.</li>
+            <li>Untuk demo aplikasi, silakan klik salah satu <strong>Akun Demo Mahasiswa</strong> di halaman login.</li>
+          </ol>
+        </div>
+        <div class="pt-2 flex justify-end">
+          <button type="button" onclick="closeForgotModal()" class="px-5 py-2.5 rounded-xl bg-[#0066e6] hover:bg-[#0052bd] text-white text-xs font-bold">
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastStack" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- =========================================================================
+       JAVASCRIPT APPLICATION LOGIC (100% PARKIR SEPEDA MOTOR UM)
+       ========================================================================= -->
+  <script>
+    /**
+     * 1. DATA AKUN MAHASISWA DEMO (TANPA DATA AKADEMIK / MATA KULIAH)
+     */
+    const demoStudents = {
+      '250612602418': { nim: '250612602418', name: 'Syamsul', initials: 'SY' },
+      '250612603001': { nim: '250612603001', name: 'Kiki Rizki Rahmatiah', initials: 'KR' },
+      '250421601178': { nim: '250421601178', name: 'Siti Manistia Nengse', initials: 'SM' },
+      '250612619453': { nim: '250612619453', name: 'Putri Nur Anjani', initials: 'PN' },
+      '250612621779': { nim: '250612621779', name: 'Teguh Apitahadi', initials: 'TA' }
+    };
+
+    /**
+     * 2. DATA 15 TITIK PARKIR KHUSUS SEPEDA MOTOR DI KAMPUS I UM
+     *    (P-A20, P-D20, P-C7, P-Q, P-D26, P-D17, P-A3, P-D12, P-D15, P1, P2, P3, P4, P5, P6)
+     */
+    const motorParkingSpots = [
+      {
+        id: 'P-A20',
+        code: 'P-A20',
+        name: 'Parkir Motor GKB A19 & A20',
+        areaDesc: 'Sisi Barat & Utara Gedung Kuliah Bersama A19–A20',
+        mapX: 684,
+        mapY: 274,
+        total: 140,
+        occupied: 104,
+        facilities: ['Kanopi Hujan', 'CCTV AI', 'Pos Jaga'],
+        fallbackIds: ['P5', 'P6', 'P-Q']
+      },
+      {
+        id: 'P-D20',
+        code: 'P-D20',
+        name: 'Parkir Motor Gedung D20 & Barat Stadion',
+        areaDesc: 'Koridor Selatan Gedung D20 dekat Stadion D21',
+        mapX: 356,
+        mapY: 254,
+        total: 95,
+        occupied: 58,
+        facilities: ['Kanopi Hujan', 'CCTV AI'],
+        fallbackIds: ['P-C7', 'P-D17', 'P-Q']
+      },
+      {
+        id: 'P-C7',
+        code: 'P-C7',
+        name: 'Parkir Motor Kompleks C7 & C5',
+        areaDesc: 'Sebelah Tenggara Stadion Cakrawala D21',
+        mapX: 460,
+        mapY: 224,
+        total: 85,
+        occupied: 52,
+        facilities: ['CCTV AI', 'Penerangan Malam'],
+        fallbackIds: ['P-D20', 'P-Q', 'P5']
+      },
+      {
+        id: 'P-Q',
+        code: 'P-Q',
+        name: 'Parkir Motor Sektor Utara C8–C9',
+        areaDesc: 'Dekat Gerbang Utara Jl. Veteran & Gedung C9',
+        mapX: 548,
+        mapY: 172,
+        total: 110,
+        occupied: 68,
+        facilities: ['Pos Jaga Gerbang', 'CCTV AI'],
+        fallbackIds: ['P5', 'P-C7', 'P-A20']
+      },
+      {
+        id: 'P-D26',
+        code: 'P-D26',
+        name: 'Parkir Motor Koridor Utara D22–D23',
+        areaDesc: 'Sepanjang Jalur Ring Road Utara dekat D22',
+        mapX: 392,
+        mapY: 122,
+        total: 80,
+        occupied: 70, // Padat (sisa 10 slot <= 15%)
+        facilities: ['CCTV AI', 'Akses Cepat Veteran'],
+        fallbackIds: ['P-Q', 'P-D20', 'P-C7']
+      },
+      {
+        id: 'P-D17',
+        code: 'P-D17',
+        name: 'Parkir Motor Utara Fakultas Sastra (D17)',
+        areaDesc: 'Ujung Utara Blok Gedung D16–D19',
+        mapX: 256,
+        mapY: 312,
+        total: 90,
+        occupied: 54,
+        facilities: ['Kanopi Hujan', 'CCTV AI', 'Pos Jaga'],
+        fallbackIds: ['P-D20', 'P3', 'P2']
+      },
+      {
+        id: 'P-A3',
+        code: 'P-A3',
+        name: 'Parkir Motor Tenggara Blok A1–A5',
+        areaDesc: 'Sektor Tenggara dekat Gerbang Jl. Surabaya',
+        mapX: 594,
+        mapY: 530,
+        total: 75,
+        occupied: 66, // Padat (sisa 9 slot <= 15%)
+        facilities: ['CCTV AI', 'Pos Jaga'],
+        fallbackIds: ['P1', 'P6', 'P2']
+      },
+      {
+        id: 'P-D12',
+        code: 'P-D12',
+        name: 'Parkir Motor Tengah Blok D10–D13 (FIS)',
+        areaDesc: 'Sisi Barat Koridor Fakultas Ilmu Sosial',
+        mapX: 204,
+        mapY: 400,
+        total: 80,
+        occupied: 80, // Penuh (0 slot)
+        facilities: ['CCTV AI', 'Penerangan Malam'],
+        fallbackIds: ['P-D17', 'P3', 'P2']
+      },
+      {
+        id: 'P-D15',
+        code: 'P-D15',
+        name: 'Parkir Motor Selatan Blok D3–D9',
+        areaDesc: 'Sisi Barat Daya Fakultas Sastra & FIS',
+        mapX: 204,
+        mapY: 458,
+        total: 85,
+        occupied: 85, // Penuh (0 slot)
+        facilities: ['CCTV AI', 'Pos Jaga'],
+        fallbackIds: ['P2', 'P-D17', 'P3']
+      },
+      {
+        id: 'P1',
+        code: 'P1',
+        name: 'Parkir Motor Gerbang Selatan Jl. Surabaya',
+        areaDesc: 'Dekat Gedung Kuliah LF–LU–LB & B1–B3',
+        mapX: 462,
+        mapY: 562,
+        total: 95,
+        occupied: 50,
+        facilities: ['Kanopi Hujan', 'CCTV AI', 'Pos Jaga Gerbang'],
+        fallbackIds: ['P2', 'P3', 'P-A3']
+      },
+      {
+        id: 'P2',
+        code: 'P2',
+        name: 'Parkir Motor Gedung C1–C2 & D1–D2',
+        areaDesc: 'Koridor Selatan dekat Lapangan Tenis',
+        mapX: 356,
+        mapY: 554,
+        total: 90,
+        occupied: 48,
+        facilities: ['CCTV AI', 'Akses Cepat Surabaya'],
+        fallbackIds: ['P1', 'P3', 'P-D17']
+      },
+      {
+        id: 'P3',
+        code: 'P3',
+        name: 'Parkir Motor Barat Graha Cakrawala (C3)',
+        areaDesc: 'Sisi Barat Gedung Graha Cakrawala UM',
+        mapX: 348,
+        mapY: 416,
+        total: 85,
+        occupied: 46,
+        facilities: ['Halaman Luas', 'CCTV AI', 'Pos Jaga'],
+        fallbackIds: ['P2', 'P-D17', 'P4']
+      },
+      {
+        id: 'P4',
+        code: 'P4',
+        name: 'Parkir Motor Koridor Ambarawa (B11–B19)',
+        areaDesc: 'Dekat FMIPA, Teknik & Masjid Al-Hikmah C4',
+        mapX: 542,
+        mapY: 322,
+        total: 110,
+        occupied: 62,
+        facilities: ['Kanopi Hujan', 'CCTV AI', 'Dekat Masjid'],
+        fallbackIds: ['P5', 'P6', 'P3']
+      },
+      {
+        id: 'P5',
+        code: 'P5',
+        name: 'Parkir Motor Kompleks FMIPA / Teknik Utara',
+        areaDesc: 'Antara Blok B18–B25 dan GKB A19–A20',
+        mapX: 598,
+        mapY: 236,
+        total: 95,
+        occupied: 56,
+        facilities: ['Kanopi Hujan', 'CCTV AI'],
+        fallbackIds: ['P-A20', 'P4', 'P-Q']
+      },
+      {
+        id: 'P6',
+        code: 'P6',
+        name: 'Parkir Motor Poros Utama GT2 & Graha Rektorat',
+        areaDesc: 'Sebelah Timur Gedung A (Graha Rektorat)',
+        mapX: 688,
+        mapY: 406,
+        total: 60,
+        occupied: 60, // Penuh (0 slot) -> Contoh otomatis dialihkan ke P4 / P-A20
+        facilities: ['CCTV AI', 'Pos Jaga Utama'],
+        fallbackIds: ['P4', 'P-A20', 'P1']
+      }
+    ];
+
+    /**
+     * 3. PEMETAAN GEDUNG / AREA TUJUAN KE TITIK PARKIR MOTOR TERDEKAT & KOORDINAT PETA
+     */
+    const campusBuildings = {
+      'gkb-a20': {
+        label: 'GKB A19–A20 (Gedung Kuliah Bersama)',
+        primarySpotId: 'P-A20',
+        goalX: 718,
+        goalY: 286,
+        walkMinutes: 1
+      },
+      'rektorat-a': {
+        label: 'Graha Rektorat A',
+        primarySpotId: 'P6',
+        goalX: 643,
+        goalY: 374,
+        walkMinutes: 1
+      },
+      'fmipa-b': {
+        label: 'FMIPA / Teknik B11–B19',
+        primarySpotId: 'P4',
+        goalX: 543,
+        goalY: 368,
+        walkMinutes: 1
+      },
+      'cakrawala-c3': {
+        label: 'Graha Cakrawala C3',
+        primarySpotId: 'P3',
+        goalX: 410,
+        goalY: 416,
+        walkMinutes: 1
+      },
+      'masjid-c4': {
+        label: 'Masjid Al-Hikmah C4',
+        primarySpotId: 'P4',
+        goalX: 424,
+        goalY: 342,
+        walkMinutes: 2
+      },
+      'stadion-d21': {
+        label: 'Stadion Cakrawala D21',
+        primarySpotId: 'P-D20',
+        goalX: 377,
+        goalY: 210,
+        walkMinutes: 1
+      },
+      'sastra-d': {
+        label: 'Fakultas Sastra / FIS D3–D19',
+        primarySpotId: 'P-D12',
+        goalX: 275,
+        goalY: 400,
+        walkMinutes: 1
+      },
+      'kuliah-lf': {
+        label: 'Gedung Kuliah LF–LU–LB',
+        primarySpotId: 'P1',
+        goalX: 500,
+        goalY: 602,
+        walkMinutes: 1
+      }
+    };
+
+    /**
+     * 4. DATA GRAFIK JAM SIBUK & TREN PARKIR MOTOR (06.30 - 17.00 WIB)
+     */
+    const hourlyOccupancyData = [
+      { hour: '06.30', pct: 24 },
+      { hour: '07.00', pct: 42 },
+      { hour: '08.00', pct: 74 },
+      { hour: '09.00', pct: 86 },
+      { hour: '10.00', pct: 89 },
+      { hour: '11.00', pct: 81 },
+      { hour: '12.00', pct: 62 },
+      { hour: '13.00', pct: 80 },
+      { hour: '14.00', pct: 72 },
+      { hour: '15.00', pct: 51 },
+      { hour: '16.00', pct: 34 },
+      { hour: '17.00', pct: 19 }
+    ];
+
+    /**
+     * 5. DATA LAPORAN KOMUNITAS MAHASISWA
+     */
+    const communityReports = [
+      {
+        spotCode: 'P-D12',
+        category: 'Area Penuh Mendadak',
+        note: 'Baris tengah dekat Fakultas Sastra penuh total, disarankan langsung ke P-D17.',
+        reporter: 'Kiki Rizki Rahmatiah',
+        time: '8 menit lalu'
+      },
+      {
+        spotCode: 'P-A20',
+        category: 'Info Banyak Slot Kosong',
+        note: 'Sisi utara kanopi GKB A20 masih banyak baris kosong untuk motor.',
+        reporter: 'Teguh Apitahadi',
+        time: '19 menit lalu'
+      }
+    ];
+
+    // STATE APLIKASI
+    let loginLanguage = 'id';
+    let currentUser = demoStudents['250612602418'];
+    let activeView = 'beranda';
+    let selectedSpotId = 'P-A20';
+    let recommendedSpotId = 'P-A20';
+    let activeGate = 'gt2-semarang';
+    let activeBuildingKey = 'gkb-a20';
+    let locationFilter = 'all';
+
+    // Simulasi Live Otomatis (Aktif default agar angka terlihat hidup)
+    let isSimActive = true;
+    let simTimer = null;
+
+    // State Zoom & Pan Peta SVG
+    let mapZoom = 1;
+    let mapPanX = 0;
+    let mapPanY = 0;
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+
+    // State Modal CCTV Motor
+    let activeCctvSpotId = null;
+    let cctvLayers = { aiBox: true, privacyBlur: true };
+    let cctvRafId = null;
+    let animatedBikes = [];
+
+    /**
+     * INISIALISASI SAAT HALAMAN SIAP
+     */
+    window.addEventListener('DOMContentLoaded', () => {
+      initMapPanEvents();
+      populateReportSpotOptions();
+      startClockTicker();
+    });
+
+    /**
+     * =========================================================================
+     * ALUR LOGIN SIPARKIR UM
+     * =========================================================================
+     */
+    function toggleLoginLanguage() {
+      loginLanguage = loginLanguage === 'id' ? 'en' : 'id';
+      const flagBox = document.getElementById('langFlagBox');
+      const labelText = document.getElementById('langLabelText');
+
+      if (loginLanguage === 'id') {
+        flagBox.innerHTML = `<svg viewBox="0 0 24 16" class="w-full h-full"><rect width="24" height="8" y="0" fill="#ce1126" /><rect width="24" height="8" y="8" fill="#ffffff" /></svg>`;
+        labelText.textContent = 'Indonesia';
+        document.getElementById('loginPrefixText').textContent = 'Masuk Ke';
+        document.getElementById('loginSubText').textContent = 'Satu Akun untuk Semua Kemudahan Parkir Anda';
+        document.getElementById('lblAccountName').textContent = 'Nama Akun (NIM):';
+        document.getElementById('lblPassword').textContent = 'Sandi:';
+        document.getElementById('lblShowPass').textContent = 'Tampilkan Kata Sandi';
+        document.getElementById('forgotPassBtn').textContent = 'Lupa Kata Sandi';
+        document.getElementById('btnMasukText').textContent = 'Masuk';
+      } else {
+        flagBox.innerHTML = `<svg viewBox="0 0 24 16" class="w-full h-full"><rect width="24" height="16" fill="#012169"/><path d="M0 0L24 16M24 0L0 16" stroke="#ffffff" stroke-width="3"/><path d="M12 0V16M0 8H24" stroke="#ffffff" stroke-width="5"/><path d="M12 0V16M0 8H24" stroke="#c8102e" stroke-width="3"/></svg>`;
+        labelText.textContent = 'English';
+        document.getElementById('loginPrefixText').textContent = 'Sign In To';
+        document.getElementById('loginSubText').textContent = 'One Account for All Your Campus Parking Convenience';
+        document.getElementById('lblAccountName').textContent = 'Account Name (NIM):';
+        document.getElementById('lblPassword').textContent = 'Password:';
+        document.getElementById('lblShowPass').textContent = 'Show Password';
+        document.getElementById('forgotPassBtn').textContent = 'Forgot Password';
+        document.getElementById('btnMasukText').textContent = 'Sign In';
+      }
+    }
+
+    function togglePasswordVisibility(show) {
+      document.getElementById('passwordInput').type = show ? 'text' : 'password';
+    }
+
+    function instantDemoLogin(nim) {
+      document.getElementById('nimInput').value = nim;
+      document.getElementById('passwordInput').value = 'siparkir2026';
+      document.getElementById('loginErrorMsg').classList.add('hidden');
+      enterSiparkirApp(nim);
+    }
+
+    function handleSiparkirLogin(event) {
+      event.preventDefault();
+      const nim = document.getElementById('nimInput').value.trim();
+      const pass = document.getElementById('passwordInput').value.trim();
+      const errEl = document.getElementById('loginErrorMsg');
+
+      if (!nim || !pass) {
+        errEl.classList.remove('hidden');
+        return;
+      }
+      errEl.classList.add('hidden');
+      enterSiparkirApp(nim);
+    }
+
+    function enterSiparkirApp(nim) {
+      if (demoStudents[nim]) {
+        currentUser = demoStudents[nim];
+      } else {
+        currentUser = {
+          nim,
+          name: `Mahasiswa UM (${nim})`,
+          initials: 'UM'
+        };
+      }
+
+      // Perbarui identitas user di Header, Drawer, dan Sapaan Beranda
+      document.getElementById('headerAvatar').textContent = currentUser.initials;
+      document.getElementById('headerUserName').textContent = currentUser.name;
+      document.getElementById('headerUserNim').textContent = currentUser.nim;
+
+      document.getElementById('drawerAvatar').textContent = currentUser.initials;
+      document.getElementById('drawerUserName').textContent = currentUser.name;
+      document.getElementById('drawerUserNim').textContent = `NIM: ${currentUser.nim}`;
+
+      document.getElementById('welcomeGreetingTitle').textContent = `Halo, ${currentUser.name}! Mau parkir motor di area mana?`;
+
+      // Tampilkan App Shell dan sembunyikan Login
+      document.getElementById('loginView').classList.add('hidden');
+      const appShell = document.getElementById('appShell');
+      appShell.classList.remove('hidden');
+      appShell.classList.add('flex');
+
+      switchView('beranda');
+      findBestMotorParking(false);
+      renderHourlyBarChart();
+      renderCommunityReports();
+
+      if (isSimActive && !simTimer) {
+        startLiveSimulationLoop();
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      showToast(`Selamat datang, ${currentUser.name}! Data parkir motor Kampus I UM siap digunakan.`, 'emerald');
+    }
+
+    function handleLogout() {
+      stopLiveSimulationLoop();
+      closeCctvModal();
+      closeDrawer();
+
+      document.getElementById('appShell').classList.add('hidden');
+      document.getElementById('appShell').classList.remove('flex');
+      document.getElementById('loginView').classList.remove('hidden');
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      showToast('Anda telah keluar dari SIPARKIR UM.', 'slate');
+    }
+
+    function openForgotModal() {
+      const m = document.getElementById('forgotModal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closeForgotModal() {
+      const m = document.getElementById('forgotModal');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    /**
+     * =========================================================================
+     * MENU GARIS TIGA (☰ HAMBURGER DRAWER) & NAVIGASI 5 HALAMAN
+     * =========================================================================
+     */
+    function openDrawer() {
+      const overlay = document.getElementById('drawerOverlay');
+      const backdrop = document.getElementById('drawerBackdrop');
+      const panel = document.getElementById('drawerPanel');
+
+      overlay.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        backdrop.classList.remove('opacity-0');
+        panel.classList.remove('-translate-x-full');
+      });
+    }
+
+    function closeDrawer() {
+      const overlay = document.getElementById('drawerOverlay');
+      const backdrop = document.getElementById('drawerBackdrop');
+      const panel = document.getElementById('drawerPanel');
+
+      backdrop.classList.add('opacity-0');
+      panel.classList.add('-translate-x-full');
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+      }, 260);
+    }
+
+    function switchView(viewName) {
+      activeView = viewName;
+      closeDrawer();
+
+      const views = ['beranda', 'lokasi', 'tren', 'panduan', 'tentang'];
+      views.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) {
+          if (v === viewName) el.classList.remove('hidden');
+          else el.classList.add('hidden');
+        }
+      });
+
+      // Sorot item aktif di Drawer Garis Tiga
+      document.querySelectorAll('.drawer-nav-item').forEach(btn => {
+        if (btn.dataset.nav === viewName) {
+          btn.className = 'drawer-nav-item w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left text-sm font-bold bg-blue-50 text-[#0066e6] border border-blue-200/70 transition';
+        } else {
+          btn.className = 'drawer-nav-item w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left text-sm font-bold text-slate-700 hover:bg-slate-100 transition';
+        }
+      });
+
+      if (viewName === 'lokasi') {
+        renderLocationsGrid();
+      } else if (viewName === 'tren') {
+        renderHourlyBarChart();
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /**
+     * =========================================================================
+     * SMART MOTOR PARKING FINDER & SISTEM REKOMENDASI OTOMATIS
+     * =========================================================================
+     */
+    function getMotorSpotStatus(spot) {
+      const empty = Math.max(0, spot.total - spot.occupied);
+      const pctEmpty = spot.total > 0 ? Math.round((empty / spot.total) * 100) : 0;
+      const pctFilled = 100 - pctEmpty;
+
+      if (empty <= 0) {
+        return {
+          key: 'full',
+          label: 'Penuh',
+          empty: 0,
+          pctEmpty: 0,
+          pctFilled: 100,
+          pinColor: '#dc2626',
+          pillBg: 'bg-rose-100 text-rose-800 border-rose-200',
+          barColor: 'bg-rose-600'
+        };
+      } else if (pctEmpty <= 15) {
+        return {
+          key: 'crowded',
+          label: 'Padat',
+          empty,
+          pctEmpty,
+          pctFilled,
+          pinColor: '#eab308',
+          pillBg: 'bg-amber-100 text-amber-800 border-amber-200',
+          barColor: 'bg-amber-400'
+        };
+      } else {
+        return {
+          key: 'available',
+          label: 'Tersedia',
+          empty,
+          pctEmpty,
+          pctFilled,
+          pinColor: '#10b981',
+          pillBg: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+          barColor: 'bg-emerald-500'
+        };
+      }
+    }
+
+    function findBestMotorParking(notifyUser = false) {
+      activeGate = document.getElementById('finderGateSelect').value;
+      activeBuildingKey = document.getElementById('finderBuildingSelect').value;
+
+      const building = campusBuildings[activeBuildingKey];
+      const primarySpot = motorParkingSpots.find(s => s.id === building.primarySpotId) || motorParkingSpots[0];
+      const primaryStatus = getMotorSpotStatus(primarySpot);
+
+      let chosenSpot = primarySpot;
+      let isRedirected = false;
+
+      // Jika titik parkir terdekat penuh, otomatis cari titik cadangan terdekat yang masih punya slot motor
+      if (primaryStatus.key === 'full') {
+        for (const fbId of primarySpot.fallbackIds) {
+          const candidate = motorParkingSpots.find(s => s.id === fbId);
+          if (candidate && getMotorSpotStatus(candidate).empty > 0) {
+            chosenSpot = candidate;
+            isRedirected = true;
+            break;
+          }
+        }
+      }
+
+      recommendedSpotId = chosenSpot.id;
+      selectedSpotId = chosenSpot.id;
+
+      updateRecommendationBanner(chosenSpot, primarySpot, building, isRedirected);
+      showFloatingCard();
+      refreshAllParkingViews();
+
+      if (notifyUser) {
+        if (isRedirected) {
+          showToast(`Area ${primarySpot.code} sedang penuh — dialihkan ramah ke ${chosenSpot.code} yang masih kosong!`, 'amber');
+        } else {
+          showToast(`Slot motor ditemukan di ${chosenSpot.code} (${chosenSpot.name}).`, 'emerald');
+        }
+      }
+    }
+
+    function updateRecommendationBanner(chosenSpot, primarySpot, building, isRedirected) {
+      const st = getMotorSpotStatus(chosenSpot);
+      const banner = document.getElementById('recommendationBanner');
+      const badgeTag = document.getElementById('recBadgeTag');
+
+      if (isRedirected) {
+        banner.className = 'rounded-2xl bg-amber-50/90 border-2 border-amber-300 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all';
+        badgeTag.className = 'px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[11px] font-extrabold tracking-wide';
+        badgeTag.textContent = `DIALIHKAN (${primarySpot.code} PENUH)`;
+      } else {
+        banner.className = 'rounded-2xl bg-emerald-50/80 border-2 border-emerald-200 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all';
+        badgeTag.className = 'px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-extrabold tracking-wide';
+        badgeTag.textContent = 'REKOMENDASI TERBAIK';
+      }
+
+      const walkEst = isRedirected ? building.walkMinutes + 2 : building.walkMinutes;
+
+      document.getElementById('recSpotCode').textContent = chosenSpot.code;
+      document.getElementById('recWalkTime').textContent = `• Estimasi ${walkEst} menit jalan kaki ke ${building.label}`;
+      document.getElementById('recSpotTitle').textContent = chosenSpot.name;
+
+      if (isRedirected) {
+        document.getElementById('recExplanationText').innerHTML = `
+          Karena <strong>${primarySpot.code}</strong> sedang penuh, sistem mengarahkan Anda ke <strong>${chosenSpot.code}</strong> yang masih memiliki <strong class="text-emerald-700">${st.empty} slot motor kosong</strong> (kapasitas ${chosenSpot.total} motor).
+        `;
+      } else {
+        document.getElementById('recExplanationText').innerHTML = `
+          Tersedia <strong class="text-emerald-700">${st.empty} slot motor kosong</strong> dari total ${chosenSpot.total} kapasitas. Fasilitas: ${chosenSpot.facilities.join(', ')}.
+        `;
+      }
+    }
+
+    function scrollToCampusMap() {
+      document.getElementById('campusMapSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /**
+     * =========================================================================
+     * PEMBARUAN SELURUH TAMPILAN REAL-TIME (KPI, PETA SVG, KARTU DETAIL, DAFTAR)
+     * =========================================================================
+     */
+    function refreshAllParkingViews() {
+      updateSummaryKpiCards();
+      renderCampusSvgMap();
+      updateFloatingSpotCard();
+      if (activeView === 'lokasi') {
+        renderLocationsGrid();
+      }
+      if (activeCctvSpotId) {
+        updateCctvHud();
+      }
+    }
+
+    function updateSummaryKpiCards() {
+      let totalCap = 0;
+      let totalEmpty = 0;
+      let availableCount = 0;
+      let crowdedCount = 0;
+      let fullCount = 0;
+
+      motorParkingSpots.forEach(spot => {
+        const st = getMotorSpotStatus(spot);
+        totalCap += spot.total;
+        totalEmpty += st.empty;
+        if (st.key === 'available') availableCount++;
+        else if (st.key === 'crowded') crowdedCount++;
+        else fullCount++;
+      });
+
+      document.getElementById('kpiEmptySlots').textContent = totalEmpty.toLocaleString('id-ID');
+      document.getElementById('kpiTotalSlots').textContent = `/ ${totalCap.toLocaleString('id-ID')} slot`;
+      document.getElementById('kpiAvailableZones').textContent = availableCount;
+      document.getElementById('kpiCrowdedZones').textContent = crowdedCount;
+      document.getElementById('kpiFullZones').textContent = fullCount;
+    }
+
+    /**
+     * RENDER PETA INTERAKTIF KAMPUS I UM + RUTE MOTOR & JALUR JALAN KAKI
+     */
+    function buildMotorRoutePath(gate, spot) {
+      if (gate === 'gt2-semarang') {
+        if (spot.mapX >= 580 && spot.mapY >= 220 && spot.mapY <= 440) {
+          return `M 798 416 L 718 408 L ${spot.mapX} ${spot.mapY}`;
+        } else if (spot.mapY < 220) {
+          return `M 798 416 L 718 408 L 758 224 L ${spot.mapX} ${spot.mapY}`;
+        } else if (spot.mapY > 440 && spot.mapX >= 440) {
+          return `M 798 416 L 718 408 L 622 566 L ${spot.mapX} ${spot.mapY}`;
+        } else {
+          return `M 798 416 L 744 360 L 278 288 L ${spot.mapX} ${spot.mapY}`;
+        }
+      } else if (gate === 'gt-veteran') {
+        if (spot.mapX >= 480 && spot.mapY <= 340) {
+          return `M 596 122 L 584 160 L ${spot.mapX} ${spot.mapY}`;
+        } else if (spot.mapX < 480 && spot.mapY <= 470) {
+          return `M 596 122 L 584 160 L 262 112 L 298 264 L ${spot.mapX} ${spot.mapY}`;
+        } else {
+          return `M 596 122 L 584 160 L 542 322 L 444 576 L ${spot.mapX} ${spot.mapY}`;
+        }
+      } else {
+        // gt-surabaya
+        if (spot.mapY >= 460) {
+          return `M 556 640 L 556 572 L ${spot.mapX} ${spot.mapY}`;
+        } else if (spot.mapX < 480) {
+          return `M 556 640 L 556 572 L 444 576 L 194 496 L ${spot.mapX} ${spot.mapY}`;
+        } else {
+          return `M 556 640 L 556 572 L 622 566 L 718 408 L ${spot.mapX} ${spot.mapY}`;
+        }
+      }
+    }
+
+    function renderCampusSvgMap() {
+      const pinsLayer = document.getElementById('motorPinsLayer');
+      const targetSpot = motorParkingSpots.find(s => s.id === selectedSpotId) || motorParkingSpots[0];
+      const building = campusBuildings[activeBuildingKey];
+
+      // Gambar rute motor dari gerbang masuk ke titik parkir terpilih
+      const motorPathStr = buildMotorRoutePath(activeGate, targetSpot);
+      document.getElementById('motorRouteBg').setAttribute('d', motorPathStr);
+      document.getElementById('motorRouteFg').setAttribute('d', motorPathStr);
+
+      // Gambar jalur jalan kaki putus-putus hijau dari titik parkir ke gedung tujuan
+      const walkPathStr = `M ${targetSpot.mapX} ${targetSpot.mapY} L ${building.goalX} ${building.goalY}`;
+      document.getElementById('walkRouteFg').setAttribute('d', walkPathStr);
+      document.getElementById('buildingGoalMarker').setAttribute('transform', `translate(${building.goalX}, ${building.goalY})`);
+
+      // Perbarui teks petunjuk arah di bawah peta
+      const gateNames = {
+        'gt2-semarang': 'Gerbang Utama Jl. Semarang / GT2',
+        'gt-veteran': 'Gerbang Utara Jl. Veteran',
+        'gt-surabaya': 'Gerbang Selatan Jl. Surabaya'
+      };
+      document.getElementById('routeTurnByTurnText').innerHTML = `
+        Masuk melalui <strong>${gateNames[activeGate]}</strong> &rarr; ikuti garis biru Ring Road menuju <strong>${targetSpot.code} (${targetSpot.name})</strong> &rarr; lanjutkan jalan kaki mengikuti garis hijau putus-putus ke <strong>${building.label}</strong>.
+      `;
+
+      // Render 15 Pin Parkir Motor
+      pinsLayer.innerHTML = motorParkingSpots.map(spot => {
+        const st = getMotorSpotStatus(spot);
+        const isSelected = spot.id === selectedSpotId;
+        const w = isSelected ? 64 : 54;
+        const h = isSelected ? 24 : 20;
+
+        return `
+          <g
+            transform="translate(${spot.mapX}, ${spot.mapY})"
+            onclick="selectSpotOnMap('${spot.id}')"
+            class="cursor-pointer"
+          >
+            ${isSelected ? `
+              <circle cx="0" cy="0" r="18" fill="${st.pinColor}" fill-opacity="0.28">
+                <animate attributeName="r" from="10" to="27" dur="1.4s" repeatCount="indefinite" />
+                <animate attributeName="opacity" from="0.75" to="0" dur="1.4s" repeatCount="indefinite" />
+              </circle>
+            ` : ''}
+
+            <g filter="url(#pinDropShadow)">
+              <rect
+                x="${-w / 2}"
+                y="${-h / 2}"
+                width="${w}"
+                height="${h}"
+                rx="${h / 2}"
+                fill="${st.pinColor}"
+                stroke="${isSelected ? '#0c2340' : '#ffffff'}"
+                stroke-width="${isSelected ? 2.5 : 1.8}"
+              />
+              <text
+                x="0"
+                y="${isSelected ? 3.5 : 3}"
+                text-anchor="middle"
+                fill="${st.key === 'crowded' ? '#0f172a' : '#ffffff'}"
+                font-size="${isSelected ? 8.5 : 7.8}"
+                font-family="JetBrains Mono, monospace"
+                font-weight="800"
+              >
+                ${spot.code}
+              </text>
+            </g>
+          </g>
+        `;
+      }).join('');
+    }
+
+    function selectSpotOnMap(spotId) {
+      selectedSpotId = spotId;
+      showFloatingCard();
+      refreshAllParkingViews();
+    }
+
+    function showFloatingCard() {
+      document.getElementById('floatingSpotCard').classList.remove('hidden');
+    }
+
+    function hideFloatingCard() {
+      document.getElementById('floatingSpotCard').classList.add('hidden');
+    }
+
+    function updateFloatingSpotCard() {
+      const spot = motorParkingSpots.find(s => s.id === selectedSpotId) || motorParkingSpots[0];
+      const st = getMotorSpotStatus(spot);
+
+      document.getElementById('floatCode').textContent = spot.code;
+      document.getElementById('floatName').textContent = spot.name;
+
+      const badge = document.getElementById('floatStatusBadge');
+      badge.textContent = st.label;
+      badge.className = `px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${st.pillBg}`;
+
+      const ratioEl = document.getElementById('floatSlotRatio');
+      ratioEl.textContent = `${st.empty} / ${spot.total} slot`;
+      ratioEl.className = st.key === 'full'
+        ? 'font-mono text-sm font-extrabold text-rose-600'
+        : st.key === 'crowded'
+        ? 'font-mono text-sm font-extrabold text-amber-700'
+        : 'font-mono text-sm font-extrabold text-emerald-700';
+
+      const bar = document.getElementById('floatProgressBar');
+      bar.style.width = `${st.pctFilled}%`;
+      bar.className = `h-full rounded-full transition-all duration-300 ${st.barColor}`;
+
+      document.getElementById('floatFacilities').innerHTML = spot.facilities.map(f => `
+        <span class="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10.5px] font-semibold text-slate-600">
+          ${f}
+        </span>
+      `).join('');
+    }
+
+    function setAsRouteDestination(spotId) {
+      selectedSpotId = spotId;
+      switchView('beranda');
+      showFloatingCard();
+      refreshAllParkingViews();
+      scrollToCampusMap();
+      const spot = motorParkingSpots.find(s => s.id === spotId);
+      showToast(`Rute menuju ${spot.code} (${spot.name}) diperbarui di peta.`, 'blue');
+    }
+
+    /**
+     * =========================================================================
+     * VIEW 2: DAFTAR LOKASI & CCTV LIVE
+     * =========================================================================
+     */
+    function setLocationFilter(filterKey) {
+      locationFilter = filterKey;
+      document.querySelectorAll('.loc-filter-btn').forEach(btn => {
+        const key = btn.dataset.locFilter;
+        if (key === filterKey) {
+          btn.className = 'loc-filter-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-[#0c2340] text-white transition';
+        } else {
+          const styles = {
+            all: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+            available: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+            crowded: 'bg-amber-50 text-amber-700 hover:bg-amber-100',
+            full: 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+          };
+          btn.className = `loc-filter-btn px-3.5 py-2 rounded-xl text-xs font-bold transition ${styles[key]}`;
+        }
+      });
+      renderLocationsGrid();
+    }
+
+    function renderLocationsGrid() {
+      const grid = document.getElementById('locationsCardsGrid');
+      const q = (document.getElementById('locationSearchInput')?.value || '').trim().toLowerCase();
+
+      const filtered = motorParkingSpots.filter(spot => {
+        const st = getMotorSpotStatus(spot);
+        const matchFilter = locationFilter === 'all' || st.key === locationFilter;
+        const matchQuery = !q || spot.code.toLowerCase().includes(q) || spot.name.toLowerCase().includes(q) || spot.areaDesc.toLowerCase().includes(q);
+        return matchFilter && matchQuery;
+      });
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full bg-white rounded-3xl border border-slate-200 p-10 text-center text-sm text-slate-500">
+            Tidak ditemukan kantong parkir motor yang sesuai dengan filter pencarian.
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(spot => {
+        const st = getMotorSpotStatus(spot);
+        return `
+          <article class="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-2xs flex flex-col justify-between gap-4 hover:border-blue-300 transition">
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                <span class="px-2.5 py-1 rounded-lg bg-[#0c2340] text-white font-mono text-xs font-extrabold">
+                  ${spot.code}
+                </span>
+                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${st.pillBg}">
+                  ${st.label}
+                </span>
+              </div>
+
+              <h2 class="mt-2.5 text-base font-extrabold text-slate-900 leading-snug">
+                ${spot.name}
+              </h2>
+              <p class="text-xs text-slate-500 mt-1">
+                ${spot.areaDesc}
+              </p>
+
+              <!-- Progress Bar Kapasitas Motor -->
+              <div class="mt-4 p-3 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-2">
+                <div class="flex items-baseline justify-between text-xs">
+                  <span class="font-semibold text-slate-600">Slot Motor Kosong</span>
+                  <span class="font-mono font-extrabold text-slate-900">${st.empty} / ${spot.total} motor</span>
+                </div>
+                <div class="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
+                  <div class="h-full rounded-full ${st.barColor} transition-all duration-300" style="width: ${st.pctFilled}%;"></div>
+                </div>
+              </div>
+
+              <div class="mt-3 flex flex-wrap gap-1.5">
+                ${spot.facilities.map(f => `<span class="px-2 py-0.5 rounded-md bg-slate-100 text-[10.5px] font-semibold text-slate-600">${f}</span>`).join('')}
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onclick="setAsRouteDestination('${spot.id}')"
+                class="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-800 hover:text-[#0066e6] text-xs font-bold transition"
+              >
+                Rute di Peta
+              </button>
+              <button
+                type="button"
+                onclick="openCctvModal('${spot.id}')"
+                class="px-3 py-2.5 rounded-xl bg-[#0066e6] hover:bg-[#0052bd] text-white text-xs font-bold shadow-2xs transition inline-flex items-center justify-center gap-1"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                CCTV Live
+              </button>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    /**
+     * =========================================================================
+     * VIEW 3: GRAFIK JAM SIBUK & TREN PARKIR MOTOR
+     * =========================================================================
+     */
+    function renderHourlyBarChart() {
+      const container = document.getElementById('hourlyBarChartContainer');
+      container.innerHTML = `
+        <div class="grid grid-cols-6 sm:grid-cols-12 gap-2 items-end h-52 pt-6 px-1">
+          ${hourlyOccupancyData.map(item => {
+            const barColor = item.pct >= 85 ? 'bg-rose-500 hover:bg-rose-600' : item.pct >= 65 ? 'bg-amber-400 hover:bg-amber-500' : 'bg-emerald-500 hover:bg-emerald-600';
+            return `
+              <button
+                type="button"
+                onclick="selectHourlyBar('${item.hour}', ${item.pct})"
+                class="flex flex-col items-center justify-end h-full group focus:outline-none"
+              >
+                <span class="text-[10px] font-mono font-extrabold text-slate-700 mb-1">${item.pct}%</span>
+                <div class="w-full max-w-[28px] rounded-t-lg transition-all duration-300 ${barColor}" style="height: ${item.pct}%;"></div>
+                <span class="mt-2 text-[10px] font-mono font-bold text-slate-500 group-hover:text-[#0066e6]">${item.hour}</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function selectHourlyBar(hour, pct) {
+      const statusText = pct >= 85 ? 'Sangat Padat' : pct >= 65 ? 'Ramai' : 'Lengang';
+      document.getElementById('hourlySelectedInfo').textContent = `Pukul ${hour} WIB: ${pct}% Terisi (${statusText})`;
+    }
+
+    /**
+     * =========================================================================
+     * VIEW 4: LAPOR KONDISI LAPANGAN KOMUNITAS
+     * =========================================================================
+     */
+    function populateReportSpotOptions() {
+      const select = document.getElementById('reportSpotSelect');
+      select.innerHTML = motorParkingSpots.map(s => `<option value="${s.code}">${s.code} — ${s.name}</option>`).join('');
+    }
+
+    function renderCommunityReports() {
+      const listEl = document.getElementById('communityReportsList');
+      listEl.innerHTML = communityReports.map(rep => `
+        <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5">
+              <span class="px-2 py-0.5 rounded bg-[#0c2340] text-white font-mono text-[10.5px] font-bold">${rep.spotCode}</span>
+              <span class="text-[11px] font-bold text-[#0066e6]">${rep.category}</span>
+            </div>
+            <span class="text-[10px] text-slate-400">${rep.time}</span>
+          </div>
+          <p class="text-xs text-slate-700 leading-snug">${rep.note}</p>
+          <div class="text-[10.5px] font-semibold text-slate-400">Dilaporkan oleh ${rep.reporter}</div>
+        </div>
+      `).join('');
+    }
+
+    function submitFieldReport(event) {
+      event.preventDefault();
+      const spotCode = document.getElementById('reportSpotSelect').value;
+      const category = document.getElementById('reportCategorySelect').value;
+      const noteInput = document.getElementById('reportNoteInput');
+      const note = noteInput.value.trim();
+
+      if (!note) return;
+
+      communityReports.unshift({
+        spotCode,
+        category,
+        note,
+        reporter: currentUser.name,
+        time: 'Baru saja'
+      });
+
+      noteInput.value = '';
+      renderCommunityReports();
+      showToast(`Terima kasih ${currentUser.name}! Laporan kondisi di ${spotCode} telah diterbitkan.`, 'emerald');
+    }
+
+    /**
+     * =========================================================================
+     * KONTROL ZOOM & PAN PETA SVG
+     * =========================================================================
+     */
+    function applyMapTransform() {
+      document.getElementById('mapTransformLayer').setAttribute('transform', `translate(${mapPanX}, ${mapPanY}) scale(${mapZoom})`);
+      document.getElementById('zoomPercentLabel').textContent = `${Math.round(mapZoom * 100)}%`;
+    }
+
+    function zoomMap(delta) {
+      mapZoom = Math.max(0.8, Math.min(2.2, +(mapZoom + delta).toFixed(2)));
+      if (mapZoom === 1) {
+        mapPanX = 0;
+        mapPanY = 0;
+      }
+      applyMapTransform();
+    }
+
+    function resetMapZoom() {
+      mapZoom = 1;
+      mapPanX = 0;
+      mapPanY = 0;
+      applyMapTransform();
+    }
+
+    function initMapPanEvents() {
+      const svg = document.getElementById('umCampusSvg');
+      svg.addEventListener('mousedown', (e) => {
+        if (mapZoom <= 1) return;
+        isPanning = true;
+        panStartX = e.clientX - mapPanX;
+        panStartY = e.clientY - mapPanY;
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        mapPanX = e.clientX - panStartX;
+        mapPanY = e.clientY - panStartY;
+        applyMapTransform();
+      });
+      window.addEventListener('mouseup', () => {
+        isPanning = false;
+      });
+    }
+
+    /**
+     * =========================================================================
+     * SIMULASI REAL-TIME OTOMATIS (AKTIF / JEDA)
+     * =========================================================================
+     */
+    function toggleLiveSimulation() {
+      isSimActive = !isSimActive;
+      const btn = document.getElementById('simToggleBtn');
+      const dot = document.getElementById('simStatusDot');
+      const txt = document.getElementById('simStatusText');
+
+      if (isSimActive) {
+        btn.className = 'inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition';
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+        txt.textContent = 'Simulasi Live: Aktif';
+        startLiveSimulationLoop();
+        showToast('Simulasi real-time parkir motor diaktifkan.', 'emerald');
+      } else {
+        btn.className = 'inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition';
+        dot.className = 'w-2 h-2 rounded-full bg-slate-400';
+        txt.textContent = 'Simulasi Live: Jeda';
+        stopLiveSimulationLoop();
+        showToast('Simulasi real-time dijeda.', 'slate');
+      }
+    }
+
+    function startLiveSimulationLoop() {
+      stopLiveSimulationLoop();
+      simTimer = setInterval(() => {
+        const randSpot = motorParkingSpots[Math.floor(Math.random() * motorParkingSpots.length)];
+        const delta = Math.random() > 0.48 ? 1 : -1;
+        randSpot.occupied = Math.max(0, Math.min(randSpot.total, randSpot.occupied + delta));
+
+        if (activeCctvSpotId === randSpot.id) {
+          spawnAnimatedBike(delta > 0 ? 'in' : 'out');
+        }
+
+        refreshAllParkingViews();
+      }, 2200);
+    }
+
+    function stopLiveSimulationLoop() {
+      if (simTimer) {
+        clearInterval(simTimer);
+        simTimer = null;
+      }
+    }
+
+    /**
+     * =========================================================================
+     * MODAL CCTV LIVE & DETEKSI AI KHUSUS SEPEDA MOTOR (HTML5 CANVAS)
+     * =========================================================================
+     */
+    function openCctvModal(spotId) {
+      const spot = motorParkingSpots.find(s => s.id === spotId);
+      if (!spot) return;
+
+      activeCctvSpotId = spotId;
+      animatedBikes = [];
+
+      document.getElementById('cctvModalTitle').textContent = `CCTV Live Parkir Motor — Area ${spot.code}`;
+      document.getElementById('cctvModalSub').textContent = `CAM-MOTOR-${spot.code} • ${spot.name} • YOLOv8 Motorcycle Detector`;
+
+      const modal = document.getElementById('cctvModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      updateCctvHud();
+      startCctvMotorCanvas();
+    }
+
+    function closeCctvModal() {
+      activeCctvSpotId = null;
+      if (cctvRafId) {
+        cancelAnimationFrame(cctvRafId);
+        cctvRafId = null;
+      }
+      const modal = document.getElementById('cctvModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function toggleCctvLayer(layerKey, enabled) {
+      cctvLayers[layerKey] = enabled;
+      if (layerKey === 'privacyBlur') {
+        const badge = document.getElementById('hudBlurStatus');
+        badge.textContent = enabled ? 'BLUR PELAT NOMOR: AKTIF' : 'BLUR PELAT NOMOR: NONAKTIF';
+      }
+    }
+
+    function updateCctvHud() {
+      const spot = motorParkingSpots.find(s => s.id === activeCctvSpotId);
+      if (!spot) return;
+
+      const st = getMotorSpotStatus(spot);
+      document.getElementById('hudMotorParked').textContent = spot.occupied;
+      document.getElementById('hudMotorEmpty').textContent = st.empty;
+
+      const tag = document.getElementById('hudZoneStatusTag');
+      tag.textContent = `STATUS: ${st.label.toUpperCase()}`;
+      tag.className = st.key === 'full'
+        ? 'px-3 py-1.5 rounded-xl bg-rose-600/95 text-white text-xs font-bold shadow'
+        : st.key === 'crowded'
+        ? 'px-3 py-1.5 rounded-xl bg-amber-500/95 text-slate-950 text-xs font-bold shadow'
+        : 'px-3 py-1.5 rounded-xl bg-emerald-600/95 text-white text-xs font-bold shadow';
+    }
+
+    function adjustMotorCount(delta) {
+      const spot = motorParkingSpots.find(s => s.id === activeCctvSpotId);
+      if (!spot) return;
+
+      if (delta > 0 && spot.occupied >= spot.total) {
+        showToast(`Area ${spot.code} sudah penuh (0 slot motor kosong)!`, 'amber');
+        return;
+      }
+      if (delta < 0 && spot.occupied <= 0) {
+        showToast('Tidak ada sepeda motor terparkir di area ini.', 'slate');
+        return;
+      }
+
+      spot.occupied += delta;
+      spawnAnimatedBike(delta > 0 ? 'in' : 'out');
+      refreshAllParkingViews();
+    }
+
+    function spawnAnimatedBike(direction) {
+      const bikeColors = ['#f97316', '#38bdf8', '#eab308', '#ef4444', '#a855f7', '#14b8a6'];
+      animatedBikes.push({
+        direction,
+        progress: 0,
+        speed: 0.014 + Math.random() * 0.005,
+        conf: Math.floor(96 + Math.random() * 4),
+        color: bikeColors[Math.floor(Math.random() * bikeColors.length)]
+      });
+    }
+
+    function startCctvMotorCanvas() {
+      const canvas = document.getElementById('cctvMotorCanvas');
+      const ctx = canvas.getContext('2d');
+
+      function renderLoop() {
+        if (!activeCctvSpotId) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
+          canvas.width = Math.floor(rect.width * dpr);
+          canvas.height = Math.floor(rect.height * dpr);
+        }
+
+        ctx.save();
+        ctx.scale(dpr, dpr);
+
+        const w = rect.width;
+        const h = rect.height;
+        const spot = motorParkingSpots.find(s => s.id === activeCctvSpotId);
+
+        // Permukaan Aspal Area Parkir Sepeda Motor
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, 0, w, h);
+
+        // Jalur Sirkulasi Motor di Tengah
+        const laneY = h * 0.42;
+        const laneH = h * 0.18;
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, laneY, w, laneH);
+
+        ctx.strokeStyle = 'rgba(248, 250, 252, 0.25)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([14, 12]);
+        ctx.beginPath();
+        ctx.moveTo(0, laneY + laneH / 2);
+        ctx.lineTo(w, laneY + laneH / 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Kanopi / Trotoar Hijau Kampus UM
+        ctx.fillStyle = '#14532d';
+        ctx.fillRect(0, 0, w, h * 0.07);
+        ctx.fillRect(0, h * 0.93, w, h * 0.07);
+
+        // 2 Baris Petak Parkir Sepeda Motor (Baris Atas: 16 petak, Baris Bawah: 16 petak = 32 petak motor)
+        const totalStalls = 32;
+        const cols = 16;
+        const occRatio = spot ? (spot.occupied / spot.total) : 0.6;
+        const filledStalls = Math.round(occRatio * totalStalls);
+
+        const marginX = w * 0.05;
+        const usableW = w - marginX * 2;
+        const stallW = usableW / cols;
+        const bikePalette = ['#f97316', '#3b82f6', '#ef4444', '#eab308', '#a855f7', '#14b8a6', '#e2e8f0'];
+
+        for (let idx = 0; idx < totalStalls; idx++) {
+          const isTopRow = idx < cols;
+          const colIdx = idx % cols;
+          const sx = marginX + colIdx * stallW;
+          const sy = isTopRow ? h * 0.11 : h * 0.65;
+          const sh = h * 0.24;
+
+          // Garis petak parkir motor
+          ctx.strokeStyle = 'rgba(250, 204, 21, 0.38)';
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(sx + 2, sy, stallW - 4, sh);
+
+          const isOccupied = idx < filledStalls;
+
+          if (isOccupied) {
+            const bw = Math.min(stallW * 0.52, 18);
+            const bh = sh * 0.74;
+            const bx = sx + (stallW - bw) / 2;
+            const by = sy + (sh - bh) / 2;
+
+            // Bodi Sepeda Motor
+            ctx.fillStyle = bikePalette[(idx * 3 + spot.code.charCodeAt(1)) % bikePalette.length];
+            drawRoundedBox(ctx, bx, by, bw, bh, 4);
+            ctx.fill();
+
+            // Stang & Jok Sepeda Motor
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(bx - 2.5, by + bh * 0.22, bw + 5, 3);
+            ctx.fillRect(bx + 2, by + bh * 0.44, bw - 4, bh * 0.36);
+
+            // Blur Pelat Nomor (Privasi)
+            if (cctvLayers.privacyBlur) {
+              drawPlateBlur(ctx, bx, by + bh - 5, bw, 5);
+            }
+
+            // Bounding Box AI YOLOv8 Hijau 'Motor 98%'
+            if (cctvLayers.aiBox) {
+              const confPct = 96 + ((idx * 3) % 4);
+              drawMotorYoloBox(ctx, bx - 2, by - 2, bw + 4, bh + 4, `Motor ${confPct}%`, '#10b981', bw < 16);
+            }
+          } else if (cctvLayers.aiBox) {
+            // Penanda Slot Kosong
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.14)';
+            ctx.fillRect(sx + 3, sy + 3, stallW - 6, sh - 6);
+            ctx.strokeStyle = '#34d399';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(sx + 3, sy + 3, stallW - 6, sh - 6);
+          }
+        }
+
+        // Animasi Sepeda Motor Bergerak Masuk / Keluar di Jalur Tengah
+        for (let i = animatedBikes.length - 1; i >= 0; i--) {
+          const bike = animatedBikes[i];
+          bike.progress += bike.speed;
+          if (bike.progress >= 1) {
+            animatedBikes.splice(i, 1);
+            continue;
+          }
+
+          const bx = bike.direction === 'in'
+            ? -40 + bike.progress * (w + 80)
+            : (w + 40) - bike.progress * (w + 80);
+          const by = bike.direction === 'in' ? laneY + laneH * 0.18 : laneY + laneH * 0.56;
+          const bw = 26;
+          const bh = 11;
+
+          ctx.fillStyle = bike.color;
+          drawRoundedBox(ctx, bx, by, bw, bh, 4);
+          ctx.fill();
+
+          if (cctvLayers.privacyBlur) {
+            drawPlateBlur(ctx, bx + bw - 6, by + 2, 6, bh - 4);
+          }
+
+          if (cctvLayers.aiBox) {
+            const lbl = `Motor ${bike.conf}% [${bike.direction === 'in' ? 'MASUK' : 'KELUAR'}]`;
+            drawMotorYoloBox(ctx, bx - 3, by - 3, bw + 6, bh + 6, lbl, '#10b981', false);
+          }
+        }
+
+        ctx.restore();
+        cctvRafId = requestAnimationFrame(renderLoop);
+      }
+
+      if (cctvRafId) cancelAnimationFrame(cctvRafId);
+      cctvRafId = requestAnimationFrame(renderLoop);
+    }
+
+    function drawMotorYoloBox(ctx, x, y, w, h, label, color, compact) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(x, y, w, h);
+
+      if (!compact) {
+        ctx.font = '700 8.5px "JetBrains Mono", monospace';
+        const tw = ctx.measureText(label).width + 6;
+        const th = 12;
+        const ty = y - th < 2 ? y + h : y - th;
+
+        ctx.fillStyle = color;
+        ctx.fillRect(x, ty, tw, th);
+
+        ctx.fillStyle = '#052e16';
+        ctx.fillText(label, x + 3, ty + 9);
+      }
+    }
+
+    function drawPlateBlur(ctx, x, y, w, h) {
+      ctx.fillStyle = 'rgba(226, 232, 240, 0.88)';
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(71, 85, 105, 0.65)';
+      for (let px = x; px < x + w; px += 4) {
+        ctx.fillRect(px, y, 2, h / 2);
+      }
+    }
+
+    function drawRoundedBox(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    function startClockTicker() {
+      function tick() {
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const str = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())} WIB`;
+        const el = document.getElementById('cctvClockText');
+        if (el) el.textContent = str;
+      }
+      tick();
+      setInterval(tick, 1000);
+    }
+
+    function showToast(message, tone = 'blue') {
+      const stack = document.getElementById('toastStack');
+      const item = document.createElement('div');
+      const toneStyles = {
+        blue: 'bg-[#0c2340] text-white border-sky-400/40',
+        emerald: 'bg-emerald-900 text-white border-emerald-400/40',
+        amber: 'bg-amber-900 text-white border-amber-400/40',
+        slate: 'bg-slate-800 text-slate-100 border-slate-600/40'
+      };
+
+      item.className = `pointer-events-auto max-w-sm px-4 py-3 rounded-2xl shadow-lg border text-xs font-semibold flex items-center gap-2.5 transition-all duration-300 translate-y-2 opacity-0 ${toneStyles[tone] || toneStyles.blue}`;
+      item.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span><span>${message}</span>`;
+
+      stack.appendChild(item);
+      requestAnimationFrame(() => {
+        item.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        item.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => item.remove(), 300);
+      }, 3200);
+    }
+  </script>
+</body>
+</html>
