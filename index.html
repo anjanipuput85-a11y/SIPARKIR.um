@@ -648,9 +648,10 @@
                 id="finderGateSelect"
                 class="w-full px-3.5 py-3 rounded-xl bg-slate-50 border border-slate-300 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066e6]/25 focus:border-[#0066e6]"
               >
-                <option value="gt2-semarang">Gerbang Utama Jl. Semarang / GT2</option>
+                <option value="gt2-semarang">Gerbang Utama Jl. Semarang</option>
                 <option value="gt-veteran">Gerbang Utara Jl. Veteran</option>
                 <option value="gt-surabaya">Gerbang Selatan Jl. Surabaya</option>
+                 <option value="gt-surabaya">Gerbang Barat Jl. Ambarawa</option>
               </select>
             </div>
 
@@ -1006,10 +1007,27 @@
                   JL. AMBARAWA
                 </text>
 
-                <!-- Jalur Penghubung 3 Gerbang -->
-                <path d="M 798 416 L 656 398" fill="none" stroke="#e2e8f0" stroke-width="12" stroke-linecap="round" />
-                <path d="M 596 122 L 584 160" fill="none" stroke="#e2e8f0" stroke-width="11" stroke-linecap="round" />
-                <path d="M 556 640 L 556 572" fill="none" stroke="#e2e8f0" stroke-width="11" stroke-linecap="round" />
+               <!-- Jalur Penghubung 4 Gerbang -->
+
+<!-- Gerbang Semarang -->
+<path d="M 798 416 L 656 398"
+  fill="none" stroke="#e2e8f0" stroke-width="12"
+  stroke-linecap="round" />
+
+<!-- Gerbang Veteran -->
+<path d="M 596 122 L 584 160"
+  fill="none" stroke="#e2e8f0" stroke-width="11"
+  stroke-linecap="round" />
+
+<!-- Gerbang Surabaya -->
+<path d="M 556 640 L 556 572"
+  fill="none" stroke="#e2e8f0" stroke-width="11"
+  stroke-linecap="round" />
+
+<!-- Gerbang Ambarawa -->
+<path d="M 278 288 L 744 360"
+  fill="none" stroke="#e2e8f0" stroke-width="11"
+  stroke-linecap="round" />
 
                 <!-- BLOK GEDUNG UTAMA KAMPUS I UM -->
                 <!-- Sektor Utara & Stadion D21 -->
@@ -1082,19 +1100,47 @@
                 <rect x="456" y="584" width="88" height="36" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.4" />
                 <text x="500" y="605" text-anchor="middle" fill="#1e3a8a" font-size="9" font-weight="800">LF • LU • LB</text>
 
-                <!-- MARKER 3 GERBANG UTAMA UM -->
-                <g transform="translate(798, 416)">
-                  <rect x="-46" y="-13" width="92" height="26" rx="13" fill="#0c2340" stroke="#38bdf8" stroke-width="2" />
-                  <text x="0" y="4" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">GT2 • SEMARANG</text>
-                </g>
-                <g transform="translate(596, 122)">
-                  <rect x="-46" y="-12" width="92" height="24" rx="12" fill="#0c2340" stroke="#38bdf8" stroke-width="2" />
-                  <text x="0" y="4" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">GT • VETERAN</text>
-                </g>
-                <g transform="translate(556, 640)">
-                  <rect x="-46" y="-12" width="92" height="24" rx="12" fill="#0c2340" stroke="#38bdf8" stroke-width="2" />
-                  <text x="0" y="4" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="800">GT • SURABAYA</text>
-                </g>
+                <!-- MARKER 4 GERBANG UTAMA UM -->
+
+<!-- Gerbang Semarang -->
+<g transform="translate(798, 416)">
+  <rect x="-46" y="-13" width="92" height="26" rx="13"
+    fill="#0c2340" stroke="#38bdf8" stroke-width="2" />
+  <text x="0" y="4" text-anchor="middle"
+    fill="#ffffff" font-size="9" font-weight="800">
+    GT2 • SEMARANG
+  </text>
+</g>
+
+<!-- Gerbang Veteran -->
+<g transform="translate(596, 122)">
+  <rect x="-46" y="-12" width="92" height="24" rx="12"
+    fill="#0c2340" stroke="#38bdf8" stroke-width="2" />
+  <text x="0" y="4" text-anchor="middle"
+    fill="#ffffff" font-size="9" font-weight="800">
+    GT • VETERAN
+  </text>
+</g>
+
+<!-- Gerbang Surabaya -->
+<g transform="translate(556, 640)">
+  <rect x="-46" y="-12" width="92" height="24" rx="12"
+    fill="#0c2340" stroke="#38bdf8" stroke-width="2" />
+  <text x="0" y="4" text-anchor="middle"
+    fill="#ffffff" font-size="9" font-weight="800">
+    GT • SURABAYA
+  </text>
+</g>
+
+<!-- Gerbang Ambarawa -->
+<g transform="translate(278, 288)">
+  <rect x="-54" y="-13" width="108" height="26" rx="13"
+    fill="#0c2340" stroke="#facc15" stroke-width="2" />
+  <text x="0" y="4" text-anchor="middle"
+    fill="#ffffff" font-size="9" font-weight="800">
+    GT • AMBARAWA
+  </text>
+</g>
 
                 <!-- LAYER ANIMASI RUTE MOTOR & JALUR JALAN KAKI -->
                 <g id="routeOverlayLayer">
@@ -1323,7 +1369,7 @@
             </div>
             <h2 class="text-base font-extrabold text-slate-900">Tentukan Gerbang &amp; Gedung</h2>
             <p class="text-xs text-slate-600 leading-relaxed">
-              Pilih gerbang masuk kampus terdekat dari arah kedatangan Anda (Jl. Semarang, Jl. Veteran, atau Jl. Surabaya) beserta gedung tujuan Anda.
+              Pilih gerbang masuk kampus terdekat dari arah kedatangan Anda (Jl. Semarang, Jl. Veteran, Jl. Ambarawa, atau Jl. Surabaya) beserta gedung tujuan Anda.
             </p>
           </div>
 
@@ -1366,6 +1412,10 @@
                 </div>
                 <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                   <span class="font-bold text-slate-800">Gerbang Selatan Jl. Surabaya</span>
+                  <span class="font-mono font-bold text-emerald-700">06.00 – 21.00 WIB</span>
+                </div>
+                 <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                  <span class="font-bold text-slate-800">Gerbang Barat Jl. Ambarawa</span>
                   <span class="font-mono font-bold text-emerald-700">06.00 – 21.00 WIB</span>
                 </div>
               </div>
@@ -1518,7 +1568,7 @@
               Cakupan Layanan Kampus I UM
             </span>
             <h2 class="text-lg font-extrabold text-slate-900">
-              15 Kantong Parkir Motor &amp; 3 Gerbang Masuk Utama
+              15 Kantong Parkir Motor &amp; 4 Gerbang Masuk Utama
             </h2>
             <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
               Mencakup pemetaan 15 titik kantong parkir sepeda motor di seluruh poros Ring Road Kampus I UM (Jl. Semarang 5 Malang) lengkap dengan rekomendasi pengalihan otomatis apabila kantong parkir utama telah mencapai kapasitas penuh.
